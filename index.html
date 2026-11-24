@@ -54,15 +54,26 @@
 <div class="card"><h3>Tambah dompet</h3><div class="row"><div><label>Nama dompet</label><input id="walletname" placeholder="Cash / BCA / DANA"></div><div><label>Saldo awal (Rp)</label><input id="walletbalance" type="number" min="0" value="0"></div><div><button id="addwallet">Tambah dompet</button></div></div></div>
 <div class="section card"><h3>Daftar dompet</h3><div id="walletlist"></div></div>
 </section>
-<section id="savings" class="page hidden"><div class="card"><h3>Target tabungan</h3><p class="muted">Fitur target tabungan akan diaktifkan setelah tabel dan alur penyimpanan diuji.</p></div></section>
+<section id="savings" class="page hidden">
+<div class="card"><h3>Buat target tabungan</h3><div class="formgrid">
+<div><label>Nama target</label><input id="goalname" placeholder="Contoh: Beli PC"></div>
+<div><label>Target nominal (Rp)</label><input id="goaltarget" type="number" min="1" placeholder="10000000"></div>
+<div><label>Target tanggal</label><input id="goaldate" type="date"></div>
+</div><p><button id="addgoal">Tambah target</button></p><div id="goalmsg" class="muted"></div></div>
+<div class="section card"><h3>Daftar target</h3><div id="goallist" class="muted">Memuat...</div></div>
+</section>
 <section id="investments" class="page hidden"><div class="card"><h3>Investasi</h3><p class="muted">Pencatatan investasi manual akan ditambahkan pada tahap berikutnya.</p></div></section>
-<section id="emergency" class="page hidden"><div class="card"><h3>Dana darurat</h3><p class="muted">Pencatatan dana darurat akan ditambahkan pada tahap berikutnya.</p></div></section>
+<section id="emergency" class="page hidden"><div class="card"><h3>Dana darurat</h3>
+<div class="formgrid"><div><label>Target dana darurat (Rp)</label><input id="emtarget" type="number" min="0" placeholder="Contoh: 5000000"></div>
+<div><label>Saldo terkumpul (Rp)</label><input id="emcurrent" type="number" min="0" placeholder="Contoh: 500000"></div></div>
+<p><button id="saveemergency">Simpan dana darurat</button></p><div id="emmsg" class="muted"></div>
+</div><div class="section card"><h3>Progress dana darurat</h3><div id="emview" class="muted">Belum ada data.</div></div></section>
 </main></div>
 <script>
 const SUPABASE_URL = "https://wdgvxaicqjcsmtgwiehz.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_zaw7UL-xMi9u5LIC70rNqg_D-1UgJxQ";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let user=null, wallets=[], transactions=[], authMode='login', booting=false;
+let user=null, wallets=[], transactions=[], goals=[], emergency=null, authMode='login', booting=false;
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const el=id=>document.getElementById(id);
 function msg(id,t){el(id).textContent=t}
@@ -101,9 +112,14 @@ el('authsubmit').onclick=async()=>{
  finally{el('authsubmit').disabled=false}
 };
 async function loadAll(){
- const [w,t]=await Promise.all([db.from('wallets').select('*').order('created_at'),db.from('transactions').select('*').order('date',{ascending:false})]);
- if(w.error||t.error){msg('welcome','Gagal memuat data: '+(w.error?.message||t.error?.message));return}
- wallets=w.data||[];transactions=t.data||[];render();
+ const [w,t,g,e]=await Promise.all([
+ db.from('wallets').select('*').order('created_at'),
+ db.from('transactions').select('*').order('date',{ascending:false}),
+ db.from('savings_goals').select('*').order('created_at',{ascending:false}),
+ db.from('emergency_fund').select('*').eq('user_id',user.id).maybeSingle()
+]);
+ if(w.error||t.error||g.error||e.error){msg('welcome','Gagal memuat data: '+(w.error?.message||t.error?.message||g.error?.message||e.error?.message));return}
+ wallets=w.data||[];transactions=t.data||[];goals=g.data||[];emergency=e.data||null;render();
 }
 function render(){
  el('wallet').innerHTML=wallets.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');
@@ -115,6 +131,7 @@ function render(){
  el('income').textContent=money(mt.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0));
  el('expense').textContent=money(mt.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0));
  el('recent').innerHTML=transactions.slice(0,5).map(t=>`<p>${esc(t.name)} <span class="${t.type==='income'?'pos':'neg'}">${t.type==='income'?'+':'−'}${money(t.amount)}</span></p>`).join('')||'Belum ada transaksi.';
+ renderGoals();renderEmergency();
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function boot(session){
@@ -149,6 +166,46 @@ el('addtx').onclick=async()=>{
  }catch(error){msg('txmsg','Gagal menyimpan: '+(error.message||'Terjadi kesalahan'))}
  finally{btn.disabled=false}
 };
+el('addgoal').onclick=async()=>{
+ const name=el('goalname').value.trim(),target_amount=Number(el('goaltarget').value),target_date=el('goaldate').value||null;
+ if(!name||!Number.isFinite(target_amount)||target_amount<=0){msg('goalmsg','Isi nama target dan nominal yang benar.');return}
+ const {error}=await db.from('savings_goals').insert({user_id:user.id,name,target_amount,current_amount:0,target_date});
+ if(error){msg('goalmsg','Gagal: '+error.message);return}
+ el('goalname').value='';el('goaltarget').value='';el('goaldate').value='';msg('goalmsg','Target berhasil ditambahkan.');await loadAll();
+};
+async function addGoalMoney(id){
+ const raw=prompt('Masukkan nominal yang ditambahkan (Rp):');if(raw===null)return;
+ const amount=Number(raw);if(!Number.isFinite(amount)||amount<=0){alert('Nominal tidak valid.');return}
+ const goal=goals.find(g=>g.id===id);if(!goal)return;
+ const {error}=await db.from('savings_goals').update({current_amount:Number(goal.current_amount||0)+amount}).eq('id',id).eq('user_id',user.id);
+ if(error){alert('Gagal: '+error.message);return}await loadAll();
+}
+async function deleteGoal(id){
+ if(!confirm('Hapus target tabungan ini?'))return;
+ const {error}=await db.from('savings_goals').delete().eq('id',id).eq('user_id',user.id);
+ if(error){alert('Gagal: '+error.message);return}await loadAll();
+}
+function renderGoals(){
+ el('goallist').innerHTML=goals.length?goals.map(g=>{
+  const target=Number(g.target_amount||0),current=Number(g.current_amount||0),pct=target>0?Math.min(100,current/target*100):0;
+  return `<div class="card" style="margin:12px 0"><div style="display:flex;justify-content:space-between;gap:10px"><strong>${esc(g.name)}</strong><span class="pill">${pct.toFixed(1)}%</span></div>
+  <p>${money(current)} / ${money(target)}</p><div style="height:9px;background:#263550;border-radius:20px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--green)"></div></div>
+  <p class="muted">Target: ${esc(g.target_date||'Belum ditentukan')}</p>
+  <button onclick="addGoalMoney('${g.id}')">Tambah saldo</button> <button class="ghost" onclick="deleteGoal('${g.id}')">Hapus</button></div>`;
+ }).join(''):'Belum ada target tabungan.';
+}
+el('saveemergency').onclick=async()=>{
+ const target=Number(el('emtarget').value),current=Number(el('emcurrent').value);
+ if(!Number.isFinite(target)||!Number.isFinite(current)||target<0||current<0){msg('emmsg','Masukkan nominal yang valid.');return}
+ const {error}=await db.from('emergency_fund').upsert({user_id:user.id,target,current,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+ if(error){msg('emmsg','Gagal menyimpan: '+error.message);return}
+ emergency={target,current};msg('emmsg','Dana darurat berhasil disimpan.');renderEmergency();
+};
+function renderEmergency(){
+ const target=Number(emergency?.target||0),current=Number(emergency?.current||0),pct=target>0?Math.min(100,current/target*100):0;
+ el('emtarget').value=emergency?.target??'';el('emcurrent').value=emergency?.current??'';
+ el('emview').innerHTML=emergency?`<strong>${money(current)} / ${money(target)}</strong><p>${pct.toFixed(1)}% tercapai</p><div style="height:10px;background:#263550;border-radius:20px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--green)"></div></div>`:'Belum ada data dana darurat.';
+}
 db.auth.getSession().then(({data})=>{if(data.session)boot(data.session)});
 db.auth.onAuthStateChange((_event,session)=>{if(session&&!user)boot(session)});
 </script>
