@@ -27,7 +27,7 @@
 </div>
 <div id="app" class="app hidden">
 <aside class="side"><div class="brand">Niell Finance</div><div class="nav">
-<button class="active" data-page="dashboard">Dashboard</button><button data-page="transactions">Transaksi</button><button data-page="wallets">Dompet</button><button data-page="savings">Tabungan</button><button data-page="investments">Investasi</button><button data-page="emergency">Dana darurat</button>
+<button class="active" data-page="dashboard">Dashboard</button><button data-page="transactions">Transaksi</button><button data-page="wallets">Dompet</button><button data-page="savings">Tabungan</button><button data-page="future-savings">Tabungan masa depan</button><button data-page="investments">Investasi</button><button data-page="emergency">Dana darurat</button>
 </div></aside>
 <main class="main">
 <div class="top"><div><h1 id="pagetitle">Dashboard</h1><div class="muted" id="welcome">Data tersinkron melalui Supabase</div></div><button class="ghost" id="logout">Keluar</button></div>
@@ -55,16 +55,18 @@
 <div class="section card"><h3>Daftar dompet</h3><div id="walletlist"></div></div>
 </section>
 <section id="savings" class="page hidden">
-<div class="card"><h3>Alokasi tabungan bulanan</h3><p class="muted" id="allocationmonth">Bulan ini</p><div class="formgrid">
-<div><label>Target alokasi bulan ini (Rp)</label><input id="allocationtarget" type="number" min="0" value="350000"></div>
-<div><label>Sudah disetor bulan ini (Rp)</label><input id="allocationsaved" type="number" min="0" value="0"></div>
-</div><p><button id="saveallocation">Simpan alokasi</button></p><div id="allocationprogress" class="muted">Belum ada alokasi bulan ini.</div><div id="allocationmsg" class="muted"></div></div>
 <div class="section card"><h3>Buat target tabungan</h3><div class="formgrid">
 <div><label>Nama target</label><input id="goalname" placeholder="Contoh: Beli PC"></div>
 <div><label>Target nominal (Rp)</label><input id="goaltarget" type="number" min="1" placeholder="10000000"></div>
 <div><label>Target tanggal</label><input id="goaldate" type="date"></div>
 </div><p><button id="addgoal">Tambah target</button></p><div id="goalmsg" class="muted"></div></div>
 <div class="section card"><h3>Daftar target</h3><div id="goallist" class="muted">Memuat...</div></div>
+</section>
+<section id="future-savings" class="page hidden">
+<div class="card"><h3>Alokasi tabungan bulanan</h3><p class="muted" id="allocationmonth">Bulan ini</p><div class="formgrid">
+<div><label>Target alokasi bulan ini (Rp)</label><input id="allocationtarget" type="number" min="0" value="350000"></div>
+<div><label>Sudah disetor bulan ini (Rp)</label><input id="allocationsaved" type="number" min="0" value="0"></div>
+</div><p><button id="saveallocation">Simpan alokasi</button></p><div id="allocationprogress" class="muted">Belum ada alokasi bulan ini.</div><div id="allocationmsg" class="muted"></div></div>
 </section>
 <section id="investments" class="page hidden"><div class="card"><h3>Tambah investasi</h3><div class="formgrid"><div><label>Nama aset</label><input id="invname" placeholder="Contoh: Reksa dana / Emas"></div><div><label>Modal awal (Rp)</label><input id="invinitial" type="number" min="1" placeholder="500000"></div><div><label>Nilai sekarang (Rp)</label><input id="invcurrent" type="number" min="0" placeholder="500000"></div></div><p><button id="addinvestment">Tambah investasi</button></p><div id="invmsg" class="muted"></div></div><div class="section card"><h3>Portofolio investasi</h3><div id="investmentlist" class="muted">Memuat...</div></div></section>
 <section id="emergency" class="page hidden"><div class="card"><h3>Dana darurat</h3>
