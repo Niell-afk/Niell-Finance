@@ -193,8 +193,22 @@ el('addinvestment').onclick=async()=>{
  el('invname').value='';el('invinitial').value='';el('invcurrent').value='';msg('invmsg','Investasi berhasil ditambahkan.');await loadAll();
 };
 async function updateInvestment(id){const item=investments.find(x=>x.id===id);if(!item)return;const raw=prompt('Masukkan nilai investasi sekarang (Rp):',String(item.current_value));if(raw===null)return;const value=Number(raw);if(!Number.isFinite(value)||value<0){alert('Nominal tidak valid.');return}const {error}=await db.from('investments').update({current_value:value}).eq('id',id).eq('user_id',user.id);if(error){alert('Gagal memperbarui: '+error.message);return}await loadAll()}
+async function editInvestment(id){
+ const item=investments.find(x=>x.id===id);if(!item)return;
+ const name=prompt('Nama aset:',item.name||'');if(name===null)return;
+ if(!name.trim()){alert('Nama aset tidak boleh kosong.');return}
+ const initialRaw=prompt('Modal awal (Rp):',String(item.initial_amount));if(initialRaw===null)return;
+ const initial=Number(initialRaw);
+ if(!Number.isFinite(initial)||initial<=0){alert('Modal awal harus lebih dari nol.');return}
+ const currentRaw=prompt('Nilai sekarang (Rp):',String(item.current_value));if(currentRaw===null)return;
+ const current=Number(currentRaw);
+ if(!Number.isFinite(current)||current<0){alert('Nilai sekarang tidak valid.');return}
+ const {error}=await db.from('investments').update({name:name.trim(),initial_amount:initial,current_value:current}).eq('id',id).eq('user_id',user.id);
+ if(error){alert('Gagal mengubah investasi: '+error.message);return}
+ await loadAll();
+}
 async function deleteInvestment(id){if(!confirm('Hapus data investasi ini?'))return;const {error}=await db.from('investments').delete().eq('id',id).eq('user_id',user.id);if(error){alert('Gagal menghapus: '+error.message);return}await loadAll()}
-function renderInvestments(){const initial=investments.reduce((s,x)=>s+Number(x.initial_amount||0),0),current=investments.reduce((s,x)=>s+Number(x.current_value||0),0),diff=current-initial;let html='';if(!investments.length){html='Belum ada data investasi.'}else{html='<div class="card" style="margin-bottom:12px"><p class="muted">Total modal</p><strong>'+money(initial)+'</strong><p class="muted">Nilai sekarang</p><strong>'+money(current)+'</strong><p class="'+(diff>=0?'pos':'neg')+'">'+(diff>=0?'+':'')+money(diff)+' ('+(initial>0?(diff/initial*100).toFixed(2):'0.00')+'%)</p></div>';html+=investments.map(x=>{const a=Number(x.initial_amount||0),v=Number(x.current_value||0),d=v-a;return '<div class="card" style="margin:12px 0"><strong>'+esc(x.name)+'</strong><p class="muted">Modal awal: '+money(a)+'</p><p>Nilai sekarang: <strong>'+money(v)+'</strong></p><p class="'+(d>=0?'pos':'neg')+'">'+(d>=0?'+':'')+money(d)+' ('+(a>0?(d/a*100).toFixed(2):'0.00')+'%)</p><button onclick="updateInvestment(\''+x.id+'\')">Ubah nilai</button> <button class="ghost" onclick="deleteInvestment(\''+x.id+'\')">Hapus</button></div>'}).join('')}el('investmentlist').innerHTML=html}
+function renderInvestments(){const initial=investments.reduce((s,x)=>s+Number(x.initial_amount||0),0),current=investments.reduce((s,x)=>s+Number(x.current_value||0),0),diff=current-initial;let html='';if(!investments.length){html='Belum ada data investasi.'}else{html='<div class="card" style="margin-bottom:12px"><p class="muted">Total modal</p><strong>'+money(initial)+'</strong><p class="muted">Nilai sekarang</p><strong>'+money(current)+'</strong><p class="'+(diff>=0?'pos':'neg')+'">'+(diff>=0?'+':'')+money(diff)+' ('+(initial>0?(diff/initial*100).toFixed(2):'0.00')+'%)</p></div>';html+=investments.map(x=>{const a=Number(x.initial_amount||0),v=Number(x.current_value||0),d=v-a;return '<div class="card" style="margin:12px 0"><strong>'+esc(x.name)+'</strong><p class="muted">Modal awal: '+money(a)+'</p><p>Nilai sekarang: <strong>'+money(v)+'</strong></p><p class="'+(d>=0?'pos':'neg')+'">'+(d>=0?'+':'')+money(d)+' ('+(a>0?(d/a*100).toFixed(2):'0.00')+'%)</p><button onclick="updateInvestment(\''+x.id+'\')">Ubah nilai</button> <button class="ghost" onclick="editInvestment(\''+x.id+'\')">Edit aset</button> <button class="ghost" onclick="deleteInvestment(\''+x.id+'\')">Hapus</button></div>'}).join('')}el('investmentlist').innerHTML=html}
 el('addgoal').onclick=async()=>{
  const name=el('goalname').value.trim(),target_amount=Number(el('goaltarget').value),target_date=el('goaldate').value||null;
  if(!name||!Number.isFinite(target_amount)||target_amount<=0){msg('goalmsg','Isi nama target dan nominal yang benar.');return}
