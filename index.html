@@ -124,7 +124,7 @@ async function loadAll(){
 function render(){
  el('wallet').innerHTML=wallets.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');
  el('walletlist').innerHTML=wallets.length?wallets.map(w=>`<p>${esc(w.name)} <strong>${money(w.balance)}</strong></p>`).join(''):'Belum ada dompet.';
- el('txlist').innerHTML=transactions.length?`<table class="table"><thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th>Nominal</th></tr></thead><tbody>${transactions.map(t=>`<tr><td>${esc(t.date||'')}</td><td>${esc(t.name||'')}</td><td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td><td class="${t.type==='income'?'pos':'neg'}">${money(t.amount)}</td></tr>`).join('')}</tbody></table>`:'Belum ada transaksi.';
+ el('txlist').innerHTML=transactions.length?`<table class="table"><thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th>Nominal</th><th>Aksi</th></tr></thead><tbody>${transactions.map(t=>`<tr><td>${esc(t.date||'')}</td><td>${esc(t.name||'')}</td><td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td><td class="${t.type==='income'?'pos':'neg'}">${money(t.amount)}</td><td><button class="ghost" onclick="deleteTransaction('${t.id}')">Hapus</button></td></tr>`).join('')}</tbody></table>`:'Belum ada transaksi.';
  const total=wallets.reduce((s,w)=>s+Number(w.balance||0),0);el('total').textContent=money(total);
  const now=new Date(), month=now.getMonth(),year=now.getFullYear();
  const mt=transactions.filter(t=>{const d=new Date(t.date+'T00:00:00');return d.getMonth()===month&&d.getFullYear()===year});
@@ -184,6 +184,12 @@ async function deleteGoal(id){
  if(!confirm('Hapus target tabungan ini?'))return;
  const {error}=await db.from('savings_goals').delete().eq('id',id).eq('user_id',user.id);
  if(error){alert('Gagal: '+error.message);return}await loadAll();
+}
+async function deleteTransaction(id){
+ if(!confirm('Hapus transaksi ini? Saldo dompet juga akan dikoreksi.'))return;
+ const {error}=await db.rpc('delete_wallet_transaction',{p_transaction_id:id});
+ if(error){alert('Gagal menghapus: '+error.message);return}
+ await loadAll();
 }
 function renderGoals(){
  el('goallist').innerHTML=goals.length?goals.map(g=>{
