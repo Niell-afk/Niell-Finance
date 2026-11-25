@@ -55,7 +55,11 @@
 <div class="section card"><h3>Daftar dompet</h3><div id="walletlist"></div></div>
 </section>
 <section id="savings" class="page hidden">
-<div class="card"><h3>Buat target tabungan</h3><div class="formgrid">
+<div class="card"><h3>Alokasi tabungan bulanan</h3><p class="muted" id="allocationmonth">Bulan ini</p><div class="formgrid">
+<div><label>Target alokasi bulan ini (Rp)</label><input id="allocationtarget" type="number" min="0" value="350000"></div>
+<div><label>Sudah disetor bulan ini (Rp)</label><input id="allocationsaved" type="number" min="0" value="0"></div>
+</div><p><button id="saveallocation">Simpan alokasi</button></p><div id="allocationprogress" class="muted">Belum ada alokasi bulan ini.</div><div id="allocationmsg" class="muted"></div></div>
+<div class="section card"><h3>Buat target tabungan</h3><div class="formgrid">
 <div><label>Nama target</label><input id="goalname" placeholder="Contoh: Beli PC"></div>
 <div><label>Target nominal (Rp)</label><input id="goaltarget" type="number" min="1" placeholder="10000000"></div>
 <div><label>Target tanggal</label><input id="goaldate" type="date"></div>
@@ -73,7 +77,9 @@
 const SUPABASE_URL = "https://wdgvxaicqjcsmtgwiehz.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_zaw7UL-xMi9u5LIC70rNqg_D-1UgJxQ";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=null, authMode='login', booting=false;
+let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=null, monthlyAllocation=null, authMode='login', booting=false;
+const monthKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01'};
+const monthLabel=()=>new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date());
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const el=id=>document.getElementById(id);
 function msg(id,t){el(id).textContent=t}
@@ -112,15 +118,16 @@ el('authsubmit').onclick=async()=>{
  finally{el('authsubmit').disabled=false}
 };
 async function loadAll(){
- const [w,t,g,i,e]=await Promise.all([
+ const [w,t,g,i,e,ma]=await Promise.all([
  db.from('wallets').select('*').order('created_at'),
  db.from('transactions').select('*').order('date',{ascending:false}),
  db.from('savings_goals').select('*').order('created_at',{ascending:false}),
  db.from('investments').select('*').order('created_at',{ascending:false}),
- db.from('emergency_fund').select('*').eq('user_id',user.id).maybeSingle()
+ db.from('emergency_fund').select('*').eq('user_id',user.id).maybeSingle(),
+ db.from('monthly_savings_allocations').select('*').eq('user_id',user.id).eq('month_key',monthKey()).maybeSingle()
 ]);
  if(w.error||t.error||g.error||i.error||e.error){msg('welcome','Gagal memuat data: '+(w.error?.message||t.error?.message||g.error?.message||i.error?.message||e.error?.message));return}
- wallets=w.data||[];transactions=t.data||[];goals=g.data||[];investments=i.data||[];emergency=e.data||null;render();
+ wallets=w.data||[];transactions=t.data||[];goals=g.data||[];investments=i.data||[];emergency=e.data||null;monthlyAllocation=ma.error?null:ma.data;render();
 }
 function render(){
  el('wallet').innerHTML=wallets.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');
@@ -132,7 +139,7 @@ function render(){
  el('income').textContent=money(mt.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0));
  el('expense').textContent=money(mt.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0));
  el('recent').innerHTML=transactions.slice(0,5).map(t=>`<p>${esc(t.name)} <span class="${t.type==='income'?'pos':'neg'}">${t.type==='income'?'+':'−'}${money(t.amount)}</span></p>`).join('')||'Belum ada transaksi.';
- renderGoals();renderInvestments();renderEmergency();
+ renderGoals();renderInvestments();renderEmergency();renderMonthlyAllocation();
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function editWallet(id){
@@ -288,6 +295,19 @@ async function deleteTransaction(id){
  if(error){alert('Gagal menghapus: '+error.message);return}
  await loadAll();
 }
+function renderMonthlyAllocation(){
+ el('allocationmonth').textContent='Periode: '+monthLabel();
+ const target=Number(monthlyAllocation?.target_amount??350000),saved=Number(monthlyAllocation?.saved_amount||0),pct=target>0?Math.min(100,saved/target*100):0;
+ el('allocationtarget').value=target;el('allocationsaved').value=saved;
+ el('allocationprogress').innerHTML=monthlyAllocation?'<strong>'+money(saved)+' / '+money(target)+'</strong><p>'+pct.toFixed(1)+'% tercapai</p><div style="height:10px;background:#263550;border-radius:20px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--green)"></div></div><p class="muted">Sisa alokasi: '+money(Math.max(0,target-saved))+'</p>':'Belum ada data alokasi bulan ini. Atur target dan simpan.';
+}
+el('saveallocation').onclick=async()=>{
+ const target_amount=Number(el('allocationtarget').value),saved_amount=Number(el('allocationsaved').value);
+ if(!Number.isFinite(target_amount)||!Number.isFinite(saved_amount)||target_amount<0||saved_amount<0){msg('allocationmsg','Nominal tidak valid.');return}
+ const {data,error}=await db.from('monthly_savings_allocations').upsert({user_id:user.id,month_key:monthKey(),target_amount,saved_amount,updated_at:new Date().toISOString()},{onConflict:'user_id,month_key'}).select().single();
+ if(error){msg('allocationmsg','Gagal menyimpan. Pastikan tabel alokasi sudah dibuat di Supabase. '+error.message);return}
+ monthlyAllocation=data;renderMonthlyAllocation();msg('allocationmsg','Alokasi bulan ini berhasil disimpan.');
+};
 function renderGoals(){
  el('goallist').innerHTML=goals.length?goals.map(g=>{
   const target=Number(g.target_amount||0),current=Number(g.current_amount||0),pct=target>0?Math.min(100,current/target*100):0;
