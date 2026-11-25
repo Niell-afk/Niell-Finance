@@ -125,7 +125,7 @@ async function loadAll(){
 function render(){
  el('wallet').innerHTML=wallets.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');
  el('walletlist').innerHTML=wallets.length?wallets.map(w=>`<div class="card" style="margin:12px 0"><strong>${esc(w.name)}</strong><p>${money(w.balance)}</p><button onclick="editWallet('${w.id}')">Ubah nama</button> <button class="ghost" onclick="deleteWallet('${w.id}')">Hapus</button></div>`).join(''):'Belum ada dompet.';
- el('txlist').innerHTML=transactions.length?`<table class="table"><thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th>Nominal</th><th>Aksi</th></tr></thead><tbody>${transactions.map(t=>`<tr><td>${esc(t.date||'')}</td><td>${esc(t.name||'')}</td><td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td><td class="${t.type==='income'?'pos':'neg'}">${money(t.amount)}</td><td><button class="ghost" onclick="deleteTransaction('${t.id}')">Hapus</button></td></tr>`).join('')}</tbody></table>`:'Belum ada transaksi.';
+ el('txlist').innerHTML=transactions.length?`<table class="table"><thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th>Nominal</th><th>Aksi</th></tr></thead><tbody>${transactions.map(t=>`<tr><td>${esc(t.date||'')}</td><td>${esc(t.name||'')}</td><td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td><td class="${t.type==='income'?'pos':'neg'}">${money(t.amount)}</td><td><button onclick="editTransaction('${t.id}')">Ubah</button> <button class="ghost" onclick="deleteTransaction('${t.id}')">Hapus</button></td></tr>`).join('')}</tbody></table>`:'Belum ada transaksi.';
  const total=wallets.reduce((s,w)=>s+Number(w.balance||0),0);el('total').textContent=money(total);
  const now=new Date(), month=now.getMonth(),year=now.getFullYear();
  const mt=transactions.filter(t=>{const d=new Date(t.date+'T00:00:00');return d.getMonth()===month&&d.getFullYear()===year});
@@ -213,6 +213,37 @@ async function deleteGoal(id){
  if(!confirm('Hapus target tabungan ini?'))return;
  const {error}=await db.from('savings_goals').delete().eq('id',id).eq('user_id',user.id);
  if(error){alert('Gagal: '+error.message);return}await loadAll();
+}
+async function editTransaction(id){
+ const tx=transactions.find(t=>t.id===id);if(!tx)return;
+ if(!wallets.length){alert('Belum ada dompet.');return}
+ const type=prompt('Jenis transaksi: income untuk pemasukan, expense untuk pengeluaran.',tx.type);
+ if(type===null)return;
+ const cleanType=type.trim().toLowerCase();
+ if(!['income','expense'].includes(cleanType)){alert('Jenis harus income atau expense.');return}
+ const name=prompt('Nama transaksi:',tx.name||'');if(name===null)return;
+ const amountRaw=prompt('Nominal (Rp):',String(tx.amount));if(amountRaw===null)return;
+ const amount=Number(amountRaw);
+ if(!Number.isFinite(amount)||amount<=0){alert('Nominal tidak valid.');return}
+ const date=prompt('Tanggal (YYYY-MM-DD):',tx.date||'');if(date===null)return;
+ if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){alert('Format tanggal harus YYYY-MM-DD.');return}
+ const category=prompt('Kategori:',tx.category||'Lainnya');if(category===null)return;
+ const walletChoices=wallets.map((w,i)=>(i+1)+'. '+w.name+' ('+money(w.balance)+')').join('\\n');
+ const currentIndex=Math.max(0,wallets.findIndex(w=>w.id===tx.source_wallet_id));
+ const walletChoice=prompt('Pilih nomor dompet:\\n'+walletChoices,String(currentIndex+1));if(walletChoice===null)return;
+ const walletIndex=Number(walletChoice)-1;
+ if(!Number.isInteger(walletIndex)||!wallets[walletIndex]){alert('Nomor dompet tidak valid.');return}
+ const {error}=await db.rpc('update_wallet_transaction',{
+  p_transaction_id:id,
+  p_wallet_id:wallets[walletIndex].id,
+  p_type:cleanType,
+  p_name:name.trim(),
+  p_amount:amount,
+  p_date:date,
+  p_category:category
+ });
+ if(error){alert('Gagal mengubah transaksi: '+error.message);return}
+ await loadAll();
 }
 async function deleteTransaction(id){
  if(!confirm('Hapus transaksi ini? Saldo dompet juga akan dikoreksi.'))return;
