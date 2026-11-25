@@ -227,14 +227,14 @@ async function editTransaction(id){
  if(!Number.isFinite(amount)||amount<=0){alert('Nominal tidak valid.');return}
  const dateInput=prompt('Tanggal (boleh DD/MM/YYYY atau YYYY-MM-DD):',tx.date||'');if(dateInput===null)return;
  let date=dateInput.trim();
- if(/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(date)){const parts=date.split('/');date=parts[2]+'-'+parts[1]+'-'+parts[0]}
- if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){alert('Format tanggal tidak valid. Contoh: 25/11/2026');return}
+ if(/^\d{2}\/\d{2}\/\d{4}$/.test(date)){const parts=date.split('/');date=parts[2]+'-'+parts[1]+'-'+parts[0]}
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){alert('Format tanggal tidak valid. Contoh: 25/11/2026');return}
  const parsedDate=new Date(date+'T00:00:00');
  if(Number.isNaN(parsedDate.getTime())||parsedDate.toISOString().slice(0,10)!==date){alert('Tanggal tidak valid.');return}
  const category=prompt('Kategori:',tx.category||'Lainnya');if(category===null)return;
- const walletChoices=wallets.map((w,i)=>(i+1)+'. '+w.name+' ('+money(w.balance)+')').join('\\n');
+ const walletChoices=wallets.map((w,i)=>(i+1)+'. '+w.name+' ('+money(w.balance)+')').join('\n');
  const currentIndex=Math.max(0,wallets.findIndex(w=>w.id===tx.source_wallet_id));
- const walletChoice=prompt('Pilih nomor dompet:\\n'+walletChoices,String(currentIndex+1));if(walletChoice===null)return;
+ const walletChoice=prompt('Pilih nomor dompet:\n'+walletChoices,String(currentIndex+1));if(walletChoice===null)return;
  const walletIndex=Number(walletChoice)-1;
  if(!Number.isInteger(walletIndex)||!wallets[walletIndex]){alert('Nomor dompet tidak valid.');return}
  const {error}=await db.rpc('update_wallet_transaction',{
