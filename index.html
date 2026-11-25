@@ -209,6 +209,23 @@ async function addGoalMoney(id){
  const {error}=await db.from('savings_goals').update({current_amount:Number(goal.current_amount||0)+amount}).eq('id',id).eq('user_id',user.id);
  if(error){alert('Gagal: '+error.message);return}await loadAll();
 }
+async function editGoal(id){
+ const goal=goals.find(g=>g.id===id);if(!goal)return;
+ const name=prompt('Nama target:',goal.name||'');if(name===null)return;
+ if(!name.trim()){alert('Nama target tidak boleh kosong.');return}
+ const targetRaw=prompt('Target nominal (Rp):',String(goal.target_amount));if(targetRaw===null)return;
+ const target=Number(targetRaw);
+ if(!Number.isFinite(target)||target<=0){alert('Target harus lebih dari nol.');return}
+ const currentRaw=prompt('Saldo tabungan saat ini (Rp):',String(goal.current_amount||0));if(currentRaw===null)return;
+ const current=Number(currentRaw);
+ if(!Number.isFinite(current)||current<0){alert('Saldo tabungan tidak valid.');return}
+ const dateRaw=prompt('Target tanggal (YYYY-MM-DD, kosongkan jika tidak ada):',goal.target_date||'');if(dateRaw===null)return;
+ const target_date=dateRaw.trim()||null;
+ if(target_date&&!/^\d{4}-\d{2}-\d{2}$/.test(target_date)){alert('Format tanggal harus YYYY-MM-DD.');return}
+ const {error}=await db.from('savings_goals').update({name:name.trim(),target_amount:target,current_amount:current,target_date}).eq('id',id).eq('user_id',user.id);
+ if(error){alert('Gagal mengubah target: '+error.message);return}
+ await loadAll();
+}
 async function deleteGoal(id){
  if(!confirm('Hapus target tabungan ini?'))return;
  const {error}=await db.from('savings_goals').delete().eq('id',id).eq('user_id',user.id);
@@ -263,7 +280,7 @@ function renderGoals(){
   return `<div class="card" style="margin:12px 0"><div style="display:flex;justify-content:space-between;gap:10px"><strong>${esc(g.name)}</strong><span class="pill">${pct.toFixed(1)}%</span></div>
   <p>${money(current)} / ${money(target)}</p><div style="height:9px;background:#263550;border-radius:20px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--green)"></div></div>
   <p class="muted">Target: ${esc(g.target_date||'Belum ditentukan')}</p>
-  <button onclick="addGoalMoney('${g.id}')">Tambah saldo</button> <button class="ghost" onclick="deleteGoal('${g.id}')">Hapus</button></div>`;
+  <button onclick="addGoalMoney('${g.id}')">Tambah saldo</button> <button class="ghost" onclick="editGoal('${g.id}')">Ubah target</button> <button class="ghost" onclick="deleteGoal('${g.id}')">Hapus</button></div>`;
  }).join(''):'Belum ada target tabungan.';
 }
 el('saveemergency').onclick=async()=>{
