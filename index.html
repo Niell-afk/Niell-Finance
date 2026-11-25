@@ -225,14 +225,14 @@ async function editTransaction(id){
  const amountRaw=prompt('Nominal (Rp):',String(tx.amount));if(amountRaw===null)return;
  const amount=Number(amountRaw);
  if(!Number.isFinite(amount)||amount<=0){alert('Nominal tidak valid.');return}
- const dateInput=prompt('Tanggal (boleh DD/MM/YYYY atau YYYY-MM-DD):',tx.date||'');if(dateInput===null)return;
- let date=dateInput.trim();
- if(/^\d{2}\/\d{2}\/\d{4}$/.test(date)){const parts=date.split('/');date=parts[2]+'-'+parts[1]+'-'+parts[0]}
- if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){alert('Format tanggal tidak valid. Contoh: 25/11/2026');return}
- const dateParts=date.split('-');
- if(dateParts.length!==3){alert('Tanggal tidak valid.');return}
- const year=Number(dateParts[0]),month=Number(dateParts[1]),day=Number(dateParts[2]);
- if(!year||month<1||month>12||day<1||day>31){alert('Tanggal tidak valid.');return}
+ const dateInput=prompt('Tanggal (DD/MM/YYYY atau YYYY-MM-DD):',tx.date||'');if(dateInput===null)return;
+ const dateNums=dateInput.match(/[0-9]+/g)||[];
+ if(dateNums.length!==3){alert('Masukkan tanggal dengan 3 bagian, contoh 25/11/2026.');return}
+ let year,month,day;
+ if(dateNums[0].length===4){year=Number(dateNums[0]);month=Number(dateNums[1]);day=Number(dateNums[2])}
+ else{day=Number(dateNums[0]);month=Number(dateNums[1]);year=Number(dateNums[2])}
+ if(!year||month<1||month>12||day<1||day>31){alert('Tanggal tidak valid. Contoh: 25/11/2026');return}
+ const date=String(year).padStart(4,'0')+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
  const category=prompt('Kategori:',tx.category||'Lainnya');if(category===null)return;
  const walletChoices=wallets.map((w,i)=>(i+1)+'. '+w.name+' ('+money(w.balance)+')').join('\n');
  const currentIndex=Math.max(0,wallets.findIndex(w=>w.id===tx.source_wallet_id));
