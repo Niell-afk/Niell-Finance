@@ -300,8 +300,13 @@ async function deleteTransaction(id){
 function renderMonthlyAllocation(){
  el('allocationmonth').textContent='Periode: '+monthLabel();
  const target=Number(monthlyAllocation?.target_amount??350000),saved=Number(monthlyAllocation?.saved_amount||0),pct=target>0?Math.min(100,saved/target*100):0;
+ const accumulated=monthlyAllocations.reduce((sum,row)=>sum+Number(row.saved_amount||0),0);
+ el('futuretotal').textContent=money(accumulated);
+ el('futurecurrent').textContent=money(saved);
+ el('futuretarget').textContent=money(target);
  el('allocationtarget').value=target;el('allocationsaved').value=saved;
  el('allocationprogress').innerHTML=monthlyAllocation?'<strong>'+money(saved)+' / '+money(target)+'</strong><p>'+pct.toFixed(1)+'% tercapai</p><div style="height:10px;background:#263550;border-radius:20px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--green)"></div></div><p class="muted">Sisa alokasi: '+money(Math.max(0,target-saved))+'</p>':'Belum ada data alokasi bulan ini. Atur target dan simpan.';
+ el('allocationhistory').innerHTML=monthlyAllocations.length?'<table class="table"><thead><tr><th>Bulan</th><th>Target</th><th>Setoran</th></tr></thead><tbody>'+monthlyAllocations.map(row=>'<tr><td>'+new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date(row.month_key+'T00:00:00'))+'</td><td>'+money(row.target_amount)+'</td><td class="pos">'+money(row.saved_amount)+'</td></tr>').join('')+'</tbody></table>':'Belum ada riwayat setoran.';
 }
 el('saveallocation').onclick=async()=>{
  const target_amount=Number(el('allocationtarget').value),saved_amount=Number(el('allocationsaved').value);
