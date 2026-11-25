@@ -124,7 +124,7 @@ async function loadAll(){
 }
 function render(){
  el('wallet').innerHTML=wallets.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');
- el('walletlist').innerHTML=wallets.length?wallets.map(w=>`<p>${esc(w.name)} <strong>${money(w.balance)}</strong></p>`).join(''):'Belum ada dompet.';
+ el('walletlist').innerHTML=wallets.length?wallets.map(w=>`<div class="card" style="margin:12px 0"><strong>${esc(w.name)}</strong><p>${money(w.balance)}</p><button onclick="editWallet('${w.id}')">Ubah nama</button> <button class="ghost" onclick="deleteWallet('${w.id}')">Hapus</button></div>`).join(''):'Belum ada dompet.';
  el('txlist').innerHTML=transactions.length?`<table class="table"><thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th>Nominal</th><th>Aksi</th></tr></thead><tbody>${transactions.map(t=>`<tr><td>${esc(t.date||'')}</td><td>${esc(t.name||'')}</td><td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td><td class="${t.type==='income'?'pos':'neg'}">${money(t.amount)}</td><td><button class="ghost" onclick="deleteTransaction('${t.id}')">Hapus</button></td></tr>`).join('')}</tbody></table>`:'Belum ada transaksi.';
  const total=wallets.reduce((s,w)=>s+Number(w.balance||0),0);el('total').textContent=money(total);
  const now=new Date(), month=now.getMonth(),year=now.getFullYear();
@@ -135,6 +135,24 @@ function render(){
  renderGoals();renderInvestments();renderEmergency();
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function editWallet(id){
+ const wallet=wallets.find(w=>w.id===id);if(!wallet)return;
+ const name=prompt('Nama dompet baru:',wallet.name);if(name===null)return;
+ const clean=name.trim();if(!clean){alert('Nama dompet tidak boleh kosong.');return}
+ const {error}=await db.from('wallets').update({name:clean}).eq('id',id).eq('user_id',user.id);
+ if(error){alert('Gagal mengubah dompet: '+error.message);return}
+ await loadAll();
+}
+async function deleteWallet(id){
+ const wallet=wallets.find(w=>w.id===id);if(!wallet)return;
+ const linked=transactions.some(t=>t.source_wallet_id===id||t.destination_wallet_id===id);
+ if(linked){alert('Dompet ini masih memiliki riwayat transaksi. Hapus riwayat transaksinya terlebih dahulu.');return}
+ if(Number(wallet.balance||0)!==0){alert('Saldo dompet harus Rp0 sebelum dihapus.');return}
+ if(!confirm('Hapus dompet '+wallet.name+'?'))return;
+ const {error}=await db.from('wallets').delete().eq('id',id).eq('user_id',user.id);
+ if(error){alert('Gagal menghapus dompet: '+error.message);return}
+ await loadAll();
+}
 async function boot(session){
  if(booting)return; booting=true;
  user=session.user;el('auth').classList.add('hidden');el('app').classList.remove('hidden');
