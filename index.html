@@ -324,6 +324,17 @@ body > #dialogbackdrop .dialog-box{
 }
 .page .card .table td{border-bottom:1px solid rgba(81,158,235,.3)!important}
 
+
+/* Daily wisdom card in sidebar */
+.daily-wisdom{margin-top:22px;padding:15px 14px 14px;border:1px solid rgba(75,151,255,.42);border-radius:15px;background:linear-gradient(145deg,rgba(24,53,91,.72),rgba(12,25,45,.94));box-shadow:0 0 22px rgba(49,125,235,.13),inset 0 0 18px rgba(52,132,255,.06);position:relative;overflow:hidden}
+.daily-wisdom:before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:5px;background:linear-gradient(180deg,#62b7ff,#397cff);box-shadow:0 0 12px #438dff}
+.wisdom-kicker{font-size:10px;font-weight:800;letter-spacing:.16em;color:#79baff;margin:0 0 12px}
+.wisdom-kicker span{font-size:13px;margin-right:5px;text-shadow:0 0 10px #58a5ff}
+.wisdom-intro{font-size:11px;color:#a9bddb;margin-bottom:7px;line-height:1.45}
+.daily-wisdom blockquote{margin:0;color:#f0f6ff;font-size:13px;line-height:1.55;font-weight:650}
+.wisdom-author{margin-top:10px;font-size:11px;color:#83b8ff;font-weight:750}
+.wisdom-source{margin-top:5px;font-size:9px;line-height:1.4;color:#7189aa}
+@media(max-width:680px){.daily-wisdom{margin-top:10px;padding:12px 13px}.daily-wisdom blockquote{font-size:12px}.wisdom-source{font-size:9px}}
 </style>
 </head>
 <body>
@@ -342,6 +353,13 @@ body > #dialogbackdrop .dialog-box{
 <div id="app" class="app hidden">
 <aside class="side"><div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M8 34V14h7l10 12V14h7v20h-7L15 22v12z" fill="currentColor"/><path d="M31 14l9-7v27h-7V17l-2 2z" fill="#9bc5ff"/></svg></span><span class="brand-copy"><strong>Niell Finance</strong><small>Plan · Track · Grow</small></span></div><div class="nav">
 <button class="active" data-page="dashboard"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-label">Dashboard</span></button><button data-page="transactions"><span class="nav-icon" aria-hidden="true">⇄</span><span class="nav-label">Transaksi</span></button><button data-page="wallets"><span class="nav-icon" aria-hidden="true">▣</span><span class="nav-label">Dompet</span></button><button data-page="savings"><span class="nav-icon" aria-hidden="true">◎</span><span class="nav-label">Tabungan</span></button><button data-page="future-savings"><span class="nav-icon" aria-hidden="true">↗</span><span class="nav-label">Tabungan masa depan</span></button><button data-page="investments"><span class="nav-icon" aria-hidden="true">◇</span><span class="nav-label">Investasi</span></button><button data-page="emergency"><span class="nav-icon" aria-hidden="true">♡</span><span class="nav-label">Dana darurat</span></button><button data-page="statistics"><span class="nav-icon" aria-hidden="true">▥</span><span class="nav-label">Statistik</span></button><button data-page="calendar"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-label">Kalender</span></button><button data-page="settings"><span class="nav-icon" aria-hidden="true">⚙</span><span class="nav-label">Pengaturan</span></button>
+</div>
+<div class="daily-wisdom" aria-live="polite">
+ <div class="wisdom-kicker"><span>✦</span> DAILY WISDOM</div>
+ <div class="wisdom-intro" id="wisdomintro">Warren Buffett pernah berkata:</div>
+ <blockquote id="wisdomquote">“The best investment you can make is in yourself.”</blockquote>
+ <div class="wisdom-author" id="wisdomauthor">— Warren Buffett</div>
+ <div class="wisdom-source" id="wisdomsource">CNBC interview, 2009</div>
 </div></aside>
 <main class="main">
 <div class="top"><div><h1 id="pagetitle">Dashboard</h1><div class="muted" id="welcome">Data tersinkron melalui Supabase</div></div><button class="ghost" id="logout">Keluar</button></div>
@@ -772,9 +790,23 @@ async function deleteWallet(id){
  if(error){nfAlert('Gagal menghapus dompet: '+error.message);return}
  await loadAll();
 }
+const dailyWisdomQuotes = [
+ {author:'Warren Buffett',quote:'The best investment you can make is in yourself.',intro:'Warren Buffett pernah berkata:',source:'CNBC interview with Becky Quick, 2009'},
+ {author:'Benjamin Franklin',quote:'Remember that time is money.',intro:'Benjamin Franklin pernah menulis:',source:'Advice to a Young Tradesman, 1748'},
+ {author:'Adam Smith',quote:'Consumption is the sole end and purpose of all production.',intro:'Adam Smith pernah menulis:',source:'The Wealth of Nations, Book IV, 1776'},
+ {author:'John Maynard Keynes',quote:'In the long run we are all dead.',intro:'John Maynard Keynes pernah menulis:',source:'A Tract on Monetary Reform, 1923'},
+ {author:'Charlie Munger',quote:'Do not live your life in such a fashion that a bad day can kill you.',intro:'Charlie Munger pernah berkata:',source:'Final CNBC interview, 2023'}
+];
+function renderDailyWisdom(){
+ const now=new Date(),dayNumber=Math.floor(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate())/86400000);
+ const item=dailyWisdomQuotes[((dayNumber%dailyWisdomQuotes.length)+dailyWisdomQuotes.length)%dailyWisdomQuotes.length];
+ const intro=el('wisdomintro'),quote=el('wisdomquote'),author=el('wisdomauthor'),source=el('wisdomsource');
+ if(intro&&quote&&author&&source){intro.textContent=item.intro;quote.textContent='“'+item.quote+'”';author.textContent='— '+item.author;source.textContent=item.source}
+}
+
 async function boot(session){
  if(booting)return; booting=true;
- user=session.user;categoryBudgets=Array.isArray(user.user_metadata?.category_budgets)?user.user_metadata.category_budgets.filter(x=>x&&typeof x.category==='string'&&Number(x.limit)>0).map(x=>({category:x.category,limit:Number(x.limit)})):[];budgetAlertHistory=Array.isArray(user.user_metadata?.budget_alert_history)?user.user_metadata.budget_alert_history.slice(0,50):[];budgetAlertStates=user.user_metadata?.budget_alert_states&&typeof user.user_metadata.budget_alert_states==='object'?{...user.user_metadata.budget_alert_states}:{};recurringTransactions=Array.isArray(user.user_metadata?.recurring_transactions)?user.user_metadata.recurring_transactions.filter(x=>x&&x.id&&x.name&&Number(x.amount)>0):[];const savedPlan=user.user_metadata?.salary_allocation;if(savedPlan&&Array.isArray(savedPlan.items)&&savedPlan.items.length===allocationDefaults.length){salaryPlan={total:Number(savedPlan.total)||1500000,mode:savedPlan.mode==='percentage'?'percentage':'fixed',items:savedPlan.items.map((x,i)=>({name:allocationDefaults[i].name,amount:Number(x.amount)||0}))}}else{salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))}}el('auth').classList.add('hidden');el('app').classList.remove('hidden');
+ user=session.user;renderDailyWisdom();categoryBudgets=Array.isArray(user.user_metadata?.category_budgets)?user.user_metadata.category_budgets.filter(x=>x&&typeof x.category==='string'&&Number(x.limit)>0).map(x=>({category:x.category,limit:Number(x.limit)})):[];budgetAlertHistory=Array.isArray(user.user_metadata?.budget_alert_history)?user.user_metadata.budget_alert_history.slice(0,50):[];budgetAlertStates=user.user_metadata?.budget_alert_states&&typeof user.user_metadata.budget_alert_states==='object'?{...user.user_metadata.budget_alert_states}:{};recurringTransactions=Array.isArray(user.user_metadata?.recurring_transactions)?user.user_metadata.recurring_transactions.filter(x=>x&&x.id&&x.name&&Number(x.amount)>0):[];const savedPlan=user.user_metadata?.salary_allocation;if(savedPlan&&Array.isArray(savedPlan.items)&&savedPlan.items.length===allocationDefaults.length){salaryPlan={total:Number(savedPlan.total)||1500000,mode:savedPlan.mode==='percentage'?'percentage':'fixed',items:savedPlan.items.map((x,i)=>({name:allocationDefaults[i].name,amount:Number(x.amount)||0}))}}else{salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))}}el('auth').classList.add('hidden');el('app').classList.remove('hidden');
  const username=user.user_metadata?.username||user.email?.split('@')[0]||'pengguna';
  el('welcome').textContent='Masuk sebagai '+username;
  await loadAll();
