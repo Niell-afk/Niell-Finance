@@ -174,6 +174,17 @@ body{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;line-he
 .page>h2,.page>.page-head,.page>.section-title{margin-top:8px;margin-bottom:18px}
 .page section>h3{margin-top:8px;margin-bottom:16px}
 @media(max-width:680px){.dash-spark{width:82px;height:38px;right:8px;bottom:7px}.dash-stat{padding:15px 13px;gap:11px}.dash-stat-icon{width:43px;height:43px;flex-basis:43px}}
+
+.cashflow-plot{position:relative;width:100%;min-width:0}
+.cashflow-plot .chart-svg{display:block;width:100%;overflow:visible}
+.cashflow-hit{cursor:crosshair;outline:none}
+.cashflow-hit:focus{fill:rgba(108,158,255,.07);stroke:rgba(108,158,255,.28);stroke-width:1}
+.cashflow-tooltip{display:none;position:absolute;z-index:20;min-width:190px;max-width:230px;padding:11px 13px;border:1px solid rgba(115,157,225,.35);border-radius:11px;background:rgba(8,17,33,.97);box-shadow:0 12px 32px rgba(0,0,0,.38);transform:translateX(-50%);pointer-events:none;color:#eaf2ff;font-size:11px;line-height:1.65}
+.cashflow-tooltip strong{display:block;margin-bottom:5px;font-size:12px;color:#fff}
+.cashflow-tooltip>div{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.cashflow-tooltip b{margin-left:auto;font-variant-numeric:tabular-nums}
+.cashflow-tip-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;display:inline-block}
+.cashflow-tip-dot.income{background:#4f8cff}.cashflow-tip-dot.expense{background:#8b5cf6}
 </style>
 </head>
 <body>
@@ -548,13 +559,37 @@ el('changepassword').onclick=async()=>{
 el('settingslogout').onclick=()=>el('logout').click();
 function goPage(page){const btn=document.querySelector('[data-page="'+page+'"]');if(!btn)return;document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===btn));document.querySelectorAll('.page').forEach(x=>x.classList.toggle('hidden',x.id!==page));el('pagetitle').textContent=btn.textContent;if(page==='calendar')renderCalendar();window.scrollTo({top:0,behavior:'smooth'})}
 function renderCashflow(currentMonthTransactions){
- const labels=[],incomeData=[],expenseData=[];const now=new Date();
- for(let offset=5;offset>=0;offset--){const d=new Date(now.getFullYear(),now.getMonth()-offset,1),key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');labels.push(new Intl.DateTimeFormat('id-ID',{month:'short'}).format(d));const rows=transactions.filter(t=>String(t.date||'').slice(0,7)===key);incomeData.push(rows.filter(t=>t.type==='income').reduce((a,t)=>a+Number(t.amount||0),0));expenseData.push(rows.filter(t=>t.type==='expense').reduce((a,t)=>a+Number(t.amount||0),0))}
+ const labels=[],incomeData=[],expenseData=[],monthKeys=[];const now=new Date();
+ for(let offset=5;offset>=0;offset--){
+  const d=new Date(now.getFullYear(),now.getMonth()-offset,1),key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  labels.push(new Intl.DateTimeFormat('id-ID',{month:'short'}).format(d));monthKeys.push(key);
+  const rows=transactions.filter(t=>String(t.date||'').slice(0,7)===key);
+  incomeData.push(rows.filter(t=>t.type==='income').reduce((a,t)=>a+Number(t.amount||0),0));
+  expenseData.push(rows.filter(t=>t.type==='expense').reduce((a,t)=>a+Number(t.amount||0),0));
+ }
  const max=Math.max(1,...incomeData,...expenseData),w=620,h=210,left=48,right=12,top=12,bottom=30,plotH=h-top-bottom,plotW=w-left-right;
- const points=arr=>arr.map((v,i)=>(left+i*plotW/5)+','+(top+plotH-(v/max)*plotH)).join(' ');
+ const xAt=i=>left+i*plotW/5,yAt=v=>top+plotH-(v/max)*plotH;
+ const points=arr=>arr.map((v,i)=>xAt(i)+','+yAt(v)).join(' ');
  const grid=[0,.5,1].map(p=>{const y=top+plotH*(1-p);return '<line x1="'+left+'" y1="'+y+'" x2="'+(w-right)+'" y2="'+y+'" stroke="#263550" stroke-dasharray="4 5"/><text x="'+(left-8)+'" y="'+(y+4)+'" fill="#91a2bd" font-size="10" text-anchor="end">'+(max*p>=1000000?(max*p/1000000).toFixed(1)+'jt':Math.round(max*p/1000)+'rb')+'</text>'}).join('');
- const xlabels=labels.map((v,i)=>'<text x="'+(left+i*plotW/5)+'" y="'+(h-7)+'" fill="#91a2bd" font-size="11" text-anchor="middle">'+v+'</text>').join('');
- el('cashflowchart').innerHTML='<svg class="chart-svg" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Grafik pemasukan dan pengeluaran enam bulan terakhir">'+grid+'<polyline points="'+points(incomeData)+'" fill="none" stroke="#4f8cff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><polyline points="'+points(expenseData)+'" fill="none" stroke="#ff7185" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+xlabels+'</svg>';
+ const xlabels=labels.map((v,i)=>'<text x="'+xAt(i)+'" y="'+(h-7)+'" fill="#91a2bd" font-size="11" text-anchor="middle">'+v+'</text>').join('');
+ const hitAreas=labels.map((v,i)=>'<rect class="cashflow-hit" data-index="'+i+'" x="'+(xAt(i)-plotW/10)+'" y="'+top+'" width="'+(plotW/5)+'" height="'+plotH+'" fill="transparent" tabindex="0" role="button" aria-label="'+v+': pemasukan '+money(incomeData[i])+', pengeluaran '+money(expenseData[i])+'"/>').join('');
+ const dots=labels.map((v,i)=>'<circle cx="'+xAt(i)+'" cy="'+yAt(incomeData[i])+'" r="4" fill="#4f8cff" stroke="#101a2d" stroke-width="2"/><circle cx="'+xAt(i)+'" cy="'+yAt(expenseData[i])+'" r="4" fill="#8b5cf6" stroke="#101a2d" stroke-width="2"/>').join('');
+ const host=el('cashflowchart');
+ host.innerHTML='<div class="cashflow-plot"><svg class="chart-svg" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Grafik garis pemasukan dan pengeluaran enam bulan terakhir">'+grid+'<polyline points="'+points(incomeData)+'" fill="none" stroke="#4f8cff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><polyline points="'+points(expenseData)+'" fill="none" stroke="#8b5cf6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+dots+xlabels+'<g class="cashflow-hover-zones">'+hitAreas+'</g></svg><div class="cashflow-tooltip" id="cashflowtooltip" role="status" aria-live="polite"></div></div>';
+ const plot=host.querySelector('.cashflow-plot'),tip=host.querySelector('#cashflowtooltip');
+ const show=index=>{
+  const monthName=new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date(monthKeys[index]+'-01T12:00:00'));
+  tip.innerHTML='<strong>'+monthName+'</strong><div><i class="cashflow-tip-dot income"></i>Pemasukan <b>'+money(incomeData[index])+'</b></div><div><i class="cashflow-tip-dot expense"></i>Pengeluaran <b>'+money(expenseData[index])+'</b></div>';
+  tip.style.display='block';tip.style.left=(xAt(index)/w*plot.clientWidth)+'px';tip.style.top='12px';
+ };
+ host.querySelectorAll('.cashflow-hit').forEach(node=>{
+  const index=Number(node.dataset.index);
+  node.addEventListener('pointerenter',()=>show(index));
+  node.addEventListener('focus',()=>show(index));
+  node.addEventListener('pointerleave',()=>{tip.style.display='none'});
+  node.addEventListener('blur',()=>{tip.style.display='none'});
+  node.addEventListener('click',()=>show(index));
+ });
 }
 function renderDashboardTargets(){
  const host=el('dashtargets');if(!host)return;
