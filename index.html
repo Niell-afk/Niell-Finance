@@ -354,7 +354,7 @@ body > #dialogbackdrop .dialog-box{
 </div>
 <div id="app" class="app hidden">
 <aside class="side"><div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M8 34V14h7l10 12V14h7v20h-7L15 22v12z" fill="currentColor"/><path d="M31 14l9-7v27h-7V17l-2 2z" fill="#9bc5ff"/></svg></span><span class="brand-copy"><strong>Niell Finance</strong><small>Plan · Track · Grow</small></span></div><div class="nav">
-<button class="active" data-page="dashboard"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-label">Dashboard</span></button><button data-page="transactions"><span class="nav-icon" aria-hidden="true">⇄</span><span class="nav-label">Transaksi</span></button><button data-page="wallets"><span class="nav-icon" aria-hidden="true">▣</span><span class="nav-label">Dompet</span></button><button data-page="savings"><span class="nav-icon" aria-hidden="true">◎</span><span class="nav-label">Tabungan</span></button><button data-page="future-savings"><span class="nav-icon" aria-hidden="true">▤</span><span class="nav-label">Tabungan masa depan</span></button><button data-page="investments"><span class="nav-icon" aria-hidden="true">◇</span><span class="nav-label">Investasi</span></button><button data-page="emergency"><span class="nav-icon" aria-hidden="true">♡</span><span class="nav-label">Dana darurat</span></button><button data-page="statistics"><span class="nav-icon" aria-hidden="true">▥</span><span class="nav-label">Statistik</span></button><button data-page="calendar"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-label">Kalender</span></button><button data-page="settings"><span class="nav-icon" aria-hidden="true">☷</span><span class="nav-label">Pengaturan</span></button>
+<button class="active" data-page="dashboard"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-label">Dashboard</span></button><button data-page="transactions"><span class="nav-icon" aria-hidden="true">⇄</span><span class="nav-label">Transaksi</span></button><button data-page="wallets"><span class="nav-icon" aria-hidden="true">▣</span><span class="nav-label">Dompet</span></button><button data-page="savings"><span class="nav-icon" aria-hidden="true">◎</span><span class="nav-label">Tabungan</span></button><button data-page="future-savings"><span class="nav-icon" aria-hidden="true">▤</span><span class="nav-label">Tabungan masa depan</span></button><button data-page="investments"><span class="nav-icon" aria-hidden="true">◇</span><span class="nav-label">Investasi</span></button><button data-page="emergency"><span class="nav-icon" aria-hidden="true">♡</span><span class="nav-label">Dana darurat</span></button><button data-page="debts"><span class="nav-icon" aria-hidden="true">⇄</span><span class="nav-label">Utang & Piutang</span></button><button data-page="statistics"><span class="nav-icon" aria-hidden="true">▥</span><span class="nav-label">Statistik</span></button><button data-page="calendar"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-label">Kalender</span></button><button data-page="settings"><span class="nav-icon" aria-hidden="true">☷</span><span class="nav-label">Pengaturan</span></button>
 </div>
 <div class="daily-wisdom" aria-live="polite">
  <div class="wisdom-kicker"><span>✦</span> DAILY WISDOM</div>
@@ -432,6 +432,28 @@ body > #dialogbackdrop .dialog-box{
 </div>
 <div class="section card"><h3>Progress dana darurat</h3><div id="emview" class="muted">Belum ada data.</div></div>
 </section>
+<section id="debts" class="page hidden">
+<div class="grid" id="debt-summary">
+ <div class="card"><div class="muted">Total utang belum lunas</div><div class="metric neg" id="debt-total">Rp0</div></div>
+ <div class="card"><div class="muted">Total piutang belum tertagih</div><div class="metric pos" id="receivable-total">Rp0</div></div>
+ <div class="card"><div class="muted">Catatan aktif</div><div class="metric" id="debt-active-count">0</div></div>
+</div>
+<div class="section card"><h3>Tambah catatan</h3>
+<div class="formgrid">
+ <div><label for="debt-kind">Jenis catatan</label><select id="debt-kind"><option value="debt">Utang saya (harus dibayar)</option><option value="receivable">Piutang saya (harus ditagih)</option></select></div>
+ <div><label for="debt-person">Nama orang</label><input id="debt-person" maxlength="80" placeholder="Nama pemberi / penerima"></div>
+ <div><label for="debt-title">Keterangan</label><input id="debt-title" maxlength="100" placeholder="Contoh: Pinjam untuk kebutuhan"></div>
+ <div><label for="debt-amount">Nominal (Rp)</label><input id="debt-amount" type="number" min="1" step="1000" placeholder="500000"></div>
+ <div><label for="debt-date">Tanggal</label><input id="debt-date" type="date"></div>
+ <div><label for="debt-due">Jatuh tempo</label><input id="debt-due" type="date"></div>
+</div>
+<p><button id="debt-add">Simpan catatan</button> <span class="muted" id="debt-msg"></span></p>
+</div>
+<div class="section card"><h3>Daftar utang & piutang</h3>
+<div class="formgrid"><div><label for="debt-filter">Tampilkan</label><select id="debt-filter"><option value="all">Semua</option><option value="debt">Utang saya</option><option value="receivable">Piutang saya</option><option value="open">Belum lunas / tertagih</option><option value="paid">Sudah lunas / tertagih</option></select></div></div>
+<div id="debt-list" class="muted">Belum ada catatan.</div>
+</div>
+</section>
 <section id="statistics" class="page hidden">
 <div class="grid"><div class="card"><div class="muted">Total pemasukan</div><div class="metric pos" id="statincome">Rp0</div></div><div class="card"><div class="muted">Total pengeluaran</div><div class="metric neg" id="statexpense">Rp0</div></div><div class="card"><div class="muted">Selisih arus kas</div><div class="metric" id="statnet">Rp0</div></div></div>
 <div class="section card"><h3>Ringkasan bulanan</h3><div class="tablewrap" id="statmonths">Belum ada data transaksi.</div></div><div class="section card"><h3>Perbandingan bulan ini vs bulan lalu</h3><div id="monthcomparison" class="grid"></div></div>
@@ -490,6 +512,7 @@ const monthKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMo
 const monthLabel=()=>new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date());
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const el=id=>document.getElementById(id);
+let debtRecords=[];
 let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=null, emergencyDepositTracking={month_key:'',monthly_deposited:0}, monthlyAllocation=null, monthlyAllocations=[], categoryBudgets=[], budgetAlertHistory=[], budgetAlertStates={}, budgetAlertSaving=false, recurringTransactions=[], authMode='login', booting=false;
 const allocationDefaults=[{name:'Kebutuhan',amount:350000},{name:'Tabungan',amount:350000},{name:'Tagihan',amount:250000},{name:'Dana darurat',amount:200000},{name:'Keluarga',amount:200000},{name:'Hiburan',amount:150000}];
 let salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))};
@@ -627,7 +650,7 @@ function renderDashboardBudgetAlerts(){
  const warnings=categoryBudgets.map(b=>{const spent=currentMonthExpenses(b.category),limit=Number(b.limit)||0,pct=limit>0?spent/limit*100:0;return {category:b.category,spent,limit,pct,status:spent>limit?'over':pct>=80?'near':'ok'}}).filter(x=>x.status!=='ok');
  host.innerHTML=warnings.length?'<div class="card" style="margin-bottom:14px;border-color:'+(warnings.some(x=>x.status==='over')?'var(--red)':'#e8ad4f')+'"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong>⚠ Peringatan batas pengeluaran</strong><button class="ghost" onclick="goPage(\'statistics\')">Kelola limit</button></div>'+warnings.map(x=>'<div style="margin-top:10px"><strong class="'+(x.status==='over'?'neg':'')+'">'+esc(x.category)+' · '+(x.status==='over'?'Melewati limit':'Mendekati limit')+'</strong><div class="muted">'+money(x.spent)+' / '+money(x.limit)+' ('+x.pct.toFixed(1)+'%)</div></div>').join('')+'</div>':'';
 }
-async function persistRecurring(){const {data,error}=await db.auth.updateUser({data:{...user.user_metadata,recurring_transactions:recurringTransactions}});if(error)throw error;user=data.user||user}
+async function persistRecurring(){const {data,error}=await db.auth.updateUser({data:{...user.user_metadata,recurring_transactions:recurringTransactions,debt_records:debtRecords}});if(error)throw error;user=data.user||user}
 function renderRecurring(){
  const host=el('recurringlist');if(!host)return;
  host.innerHTML=recurringTransactions.length?recurringTransactions.map(r=>{const done=r.last_month===monthKey().slice(0,7);return '<div class="card" style="margin:9px 0;padding:13px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><strong>'+esc(r.name)+'</strong><div class="muted">'+(r.type==='income'?'Pemasukan':'Pengeluaran')+' · '+esc(r.category)+' · '+money(r.amount)+'</div><div class="muted" style="font-size:12px">'+(done?'Sudah dicatat bulan ini':'Belum dicatat bulan ini')+'</div></div><div><button '+(done?'disabled':'')+' onclick="recordRecurring(\''+r.id+'\')">'+(done?'Sudah dicatat':'Catat bulan ini')+'</button> <button class="ghost" onclick="deleteRecurring(\''+r.id+'\')">Hapus</button></div></div>'}).join(''):'<div class="muted">Belum ada transaksi rutin.</div>';
@@ -730,7 +753,7 @@ el('changepassword').onclick=async()=>{
 
 el('savedisplayname').onclick=async()=>{const name=el('displaynameinput').value.trim();if(!name){msg('displaynamemsg','Isi nama tampilan dulu.');return}if(name.length>32){msg('displaynamemsg','Maksimal 32 karakter.');return}const btn=el('savedisplayname');btn.disabled=true;msg('displaynamemsg','Menyimpan...');try{const {data,error}=await db.auth.updateUser({data:{...user.user_metadata,display_name:name}});if(error)throw error;user=data.user||user;el('dashboardusername').textContent=name;el('welcome').textContent='Masuk sebagai '+name;msg('displaynamemsg','Nama tampilan berhasil diubah.')}catch(error){msg('displaynamemsg','Gagal menyimpan: '+(error.message||'Terjadi kesalahan'))}finally{btn.disabled=false}};
 el('settingslogout').onclick=()=>el('logout').click();
-function goPage(page){const btn=document.querySelector('[data-page="'+page+'"]');if(!btn)return;document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===btn));document.querySelectorAll('.page').forEach(x=>x.classList.toggle('hidden',x.id!==page));el('pagetitle').textContent=btn.querySelector('.nav-label')?.textContent?.trim()||btn.textContent.trim();if(page==='calendar')renderCalendar();window.scrollTo({top:0,behavior:'smooth'})}
+function goPage(page){const btn=document.querySelector('[data-page="'+page+'"]');if(!btn)return;document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===btn));document.querySelectorAll('.page').forEach(x=>x.classList.toggle('hidden',x.id!==page));el('pagetitle').textContent=btn.querySelector('.nav-label')?.textContent?.trim()||btn.textContent.trim();if(page==='calendar')renderCalendar();if(page==='debts')renderDebts();window.scrollTo({top:0,behavior:'smooth'})}
 function renderCashflow(currentMonthTransactions){
  const labels=[],incomeData=[],expenseData=[],monthKeys=[];const now=new Date();
  for(let offset=5;offset>=0;offset--){
@@ -820,7 +843,7 @@ function renderDailyWisdom(){
 
 async function boot(session){
  if(booting)return; booting=true;
- user=session.user;emergencyDepositTracking=user.user_metadata?.emergency_deposit_tracking&&typeof user.user_metadata.emergency_deposit_tracking==='object'?user.user_metadata.emergency_deposit_tracking:{month_key:'',monthly_deposited:0};renderDailyWisdom();categoryBudgets=Array.isArray(user.user_metadata?.category_budgets)?user.user_metadata.category_budgets.filter(x=>x&&typeof x.category==='string'&&Number(x.limit)>0).map(x=>({category:x.category,limit:Number(x.limit)})):[];budgetAlertHistory=Array.isArray(user.user_metadata?.budget_alert_history)?user.user_metadata.budget_alert_history.slice(0,50):[];budgetAlertStates=user.user_metadata?.budget_alert_states&&typeof user.user_metadata.budget_alert_states==='object'?{...user.user_metadata.budget_alert_states}:{};recurringTransactions=Array.isArray(user.user_metadata?.recurring_transactions)?user.user_metadata.recurring_transactions.filter(x=>x&&x.id&&x.name&&Number(x.amount)>0):[];const savedPlan=user.user_metadata?.salary_allocation;if(savedPlan&&Array.isArray(savedPlan.items)&&savedPlan.items.length===allocationDefaults.length){salaryPlan={total:Number(savedPlan.total)||1500000,mode:savedPlan.mode==='percentage'?'percentage':'fixed',items:savedPlan.items.map((x,i)=>({name:allocationDefaults[i].name,amount:Number(x.amount)||0}))}}else{salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))}}el('auth').classList.add('hidden');el('app').classList.remove('hidden');
+ user=session.user;debtRecords=Array.isArray(user.user_metadata?.debt_records)?user.user_metadata.debt_records:[];emergencyDepositTracking=user.user_metadata?.emergency_deposit_tracking&&typeof user.user_metadata.emergency_deposit_tracking==='object'?user.user_metadata.emergency_deposit_tracking:{month_key:'',monthly_deposited:0};renderDailyWisdom();categoryBudgets=Array.isArray(user.user_metadata?.category_budgets)?user.user_metadata.category_budgets.filter(x=>x&&typeof x.category==='string'&&Number(x.limit)>0).map(x=>({category:x.category,limit:Number(x.limit)})):[];budgetAlertHistory=Array.isArray(user.user_metadata?.budget_alert_history)?user.user_metadata.budget_alert_history.slice(0,50):[];budgetAlertStates=user.user_metadata?.budget_alert_states&&typeof user.user_metadata.budget_alert_states==='object'?{...user.user_metadata.budget_alert_states}:{};recurringTransactions=Array.isArray(user.user_metadata?.recurring_transactions)?user.user_metadata.recurring_transactions.filter(x=>x&&x.id&&x.name&&Number(x.amount)>0):[];const savedPlan=user.user_metadata?.salary_allocation;if(savedPlan&&Array.isArray(savedPlan.items)&&savedPlan.items.length===allocationDefaults.length){salaryPlan={total:Number(savedPlan.total)||1500000,mode:savedPlan.mode==='percentage'?'percentage':'fixed',items:savedPlan.items.map((x,i)=>({name:allocationDefaults[i].name,amount:Number(x.amount)||0}))}}else{salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))}}el('auth').classList.add('hidden');el('app').classList.remove('hidden');
  const username=user.user_metadata?.username||user.email?.split('@')[0]||'pengguna';
  el('welcome').textContent='Masuk sebagai '+username;
  await loadAll();
@@ -866,7 +889,46 @@ el('exportpdf').onclick=()=>{
 
 el('logout').onclick=async()=>{await db.auth.signOut();location.reload()};
 document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>goPage(b.dataset.page));
-el('date').value=new Date().toISOString().slice(0,10);
+function renderDebts(){
+ const active=debtRecords.filter(x=>Number(x.remaining)>0),sum=kind=>active.filter(x=>x.kind===kind).reduce((a,x)=>a+Number(x.remaining||0),0);
+ el('debt-total').textContent=money(sum('debt'));el('receivable-total').textContent=money(sum('receivable'));el('debt-active-count').textContent=active.length;
+ const filter=el('debt-filter').value,rows=debtRecords.filter(x=>filter==='all'||filter===x.kind||(filter==='open'&&Number(x.remaining)>0)||(filter==='paid'&&Number(x.remaining)<=0)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ el('debt-list').innerHTML=rows.length?rows.map(x=>{const paid=Number(x.remaining)<=0,kind=x.kind==='debt'?'Utang saya':'Piutang saya',overdue=!paid&&x.due&&x.due<new Date().toISOString().slice(0,10);return '<div class="card" style="margin:10px 0"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><strong>'+esc(x.title||kind)+'</strong><div class="muted">'+kind+' · '+esc(x.person||'-')+'</div></div><span class="pill">'+(paid?'Lunas / tertagih':overdue?'Lewat jatuh tempo':'Belum selesai')+'</span></div><div class="grid" style="margin-top:10px"><div><span class="muted">Nominal awal</span><strong>'+money(x.amount)+'</strong></div><div><span class="muted">Sisa</span><strong class="'+(x.kind==='debt'?'neg':'pos')+'">'+money(x.remaining)+'</strong></div><div><span class="muted">Jatuh tempo</span><strong>'+(esc(x.due||'Belum ditentukan'))+'</strong></div></div><div class="muted" style="margin-top:8px">Tanggal catatan: '+esc(x.date||'-')+' · Riwayat pembayaran: '+(x.payments||[]).length+'</div>'+(paid?'':'<p><button onclick="payDebtRecord(\''+x.id+'\')">Catat pembayaran</button></p>')+'<button class="ghost" onclick="viewDebtPayments(\''+x.id+'\')">Riwayat</button> <button class="ghost" onclick="editDebtRecord(\''+x.id+'\')">Ubah</button> <button class="ghost" onclick="removeDebtRecord(\''+x.id+'\')">Hapus</button></div>'}).join(''):'Belum ada catatan untuk filter ini.';
+}
+async function saveDebtRecords(message){
+ const {data,error}=await db.auth.updateUser({data:{debt_records:debtRecords}});
+ if(error){msg('debt-msg','Gagal menyimpan: '+error.message);return false}
+ if(data?.user)user=data.user;renderDebts();msg('debt-msg',message);return true;
+}
+el('debt-add').onclick=async()=>{
+ const kind=el('debt-kind').value,person=el('debt-person').value.trim(),title=el('debt-title').value.trim(),amount=Number(el('debt-amount').value),date=el('debt-date').value,due=el('debt-due').value;
+ if(!person||!title||!Number.isFinite(amount)||amount<=0||!date){msg('debt-msg','Lengkapi nama, keterangan, nominal, dan tanggal.');return}
+ debtRecords.unshift({id:crypto.randomUUID(),kind,person,title,amount,remaining:amount,date,due,payments:[],created_at:new Date().toISOString()});
+ if(await saveDebtRecords('Catatan berhasil disimpan.')){['debt-person','debt-title','debt-amount','debt-due'].forEach(id=>el(id).value='');el('debt-date').value=new Date().toISOString().slice(0,10)}
+};
+window.payDebtRecord=async id=>{
+ const item=debtRecords.find(x=>x.id===id);if(!item)return;
+ const raw=await nfPrompt('Nominal pembayaran / penagihan (Rp). Sisa '+money(item.remaining)+':',String(item.remaining));if(raw===null)return;
+ const amount=Number(String(raw).replace(/[^0-9]/g,''));if(!Number.isFinite(amount)||amount<=0||amount>Number(item.remaining)){msg('debt-msg','Nominal harus lebih dari Rp0 dan tidak melebihi sisa.');return}
+ item.remaining=Number(item.remaining)-amount;item.payments=Array.isArray(item.payments)?item.payments:[];item.payments.unshift({amount,date:new Date().toISOString().slice(0,10)});
+ await saveDebtRecords('Pembayaran berhasil dicatat.');
+};
+window.viewDebtPayments=async id=>{
+ const item=debtRecords.find(x=>x.id===id);if(!item)return;
+ const rows=item.payments||[];await nfAlert(rows.length?rows.map(x=>x.date+' · '+money(x.amount)).join('\n'):'Belum ada pembayaran untuk catatan ini.');
+};
+window.editDebtRecord=async id=>{
+ const item=debtRecords.find(x=>x.id===id);if(!item)return;
+ const raw=await nfPrompt('Ubah keterangan catatan:',item.title||'');if(raw===null)return;
+ if(!raw.trim()){msg('debt-msg','Keterangan tidak boleh kosong.');return}
+ item.title=raw.trim();await saveDebtRecords('Keterangan berhasil diubah.');
+};
+window.removeDebtRecord=async id=>{
+ const item=debtRecords.find(x=>x.id===id);if(!item||!await nfConfirm('Hapus catatan '+item.title+' beserta riwayat pembayarannya?'))return;
+ debtRecords=debtRecords.filter(x=>x.id!==id);await saveDebtRecords('Catatan berhasil dihapus.');
+};
+el('debt-filter').onchange=renderDebts;
+el('date').value=new Date().toISOString().slice(0,10);el('debt-date').value=new Date().toISOString().slice(0,10);
 el('addwallet').onclick=async()=>{const name=el('walletname').value.trim(),balance=Number(el('walletbalance').value||0);if(!name||balance<0)return;const {error}=await db.from('wallets').insert({user_id:user.id,name,balance});if(error){nfAlert(error.message);return}el('walletname').value='';el('walletbalance').value='0';await loadAll()};
 ['txsearch','txfiltertype','txfiltermonth','txsort'].forEach(id=>el(id).addEventListener('input',()=>render()));
 el('exporttx').onclick=exportTransactions;
