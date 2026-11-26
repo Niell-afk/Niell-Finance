@@ -102,6 +102,17 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .txfilters input:focus,.txfilters select:focus{outline:0;border-color:#5797ff;box-shadow:0 0 0 3px rgba(79,145,255,.12)}
 #txcount{font-size:12px;color:#91a6c7}.tx-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 14px}.tx-total{padding:12px 14px;border:1px solid rgba(107,139,190,.17);border-radius:12px;background:rgba(20,34,58,.72);min-width:0}.tx-total span{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}.tx-total strong{font-size:15px;overflow-wrap:anywhere}
 @media(max-width:720px){.txfilters{grid-template-columns:1fr 1fr}.txfilters input[type=search]{grid-column:1/-1}.txfilters button{grid-column:1/-1}.tx-totals{grid-template-columns:1fr}}
+
+/* Themed dialog */
+.dialog-backdrop{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(2,7,16,.76);backdrop-filter:blur(8px)}
+.dialog-backdrop.open{display:flex}
+.dialog-box{width:min(100%,440px);padding:22px;border:1px solid rgba(91,151,255,.3);border-radius:18px;background:linear-gradient(145deg,#172944,#0d1729);box-shadow:0 28px 90px rgba(0,0,0,.55)}
+.dialog-box h3{margin:0 0 10px;font-size:18px;color:#eff5ff}
+.dialog-message{margin:0 0 16px;color:#b8c9e3;white-space:pre-wrap;line-height:1.55}
+.dialog-input{width:100%;min-height:46px;padding:12px 14px;border:1px solid #345078;border-radius:11px;background:#091426;color:#eff5ff}
+.dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+.dialog-actions button{min-width:88px}
+
 </style>
 </head>
 <body>
@@ -175,10 +186,48 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div class="card"><h3>Pengaturan akun</h3><p class="muted">Informasi akun yang sedang digunakan.</p><div class="notice" id="accountinfo">Memuat akun...</div><p class="muted">Pengaturan alokasi gaji bisa diubah langsung dari Dashboard. Data transaksi dan tabungan tersimpan melalui akun Supabase.</p><button class="ghost" id="settingslogout">Keluar dari akun</button></div>
 </section>
 </main></div>
+
+<div id="dialogbackdrop" class="dialog-backdrop" role="presentation">
+ <div class="dialog-box" role="dialog" aria-modal="true" aria-labelledby="dialogtitle">
+  <h3 id="dialogtitle">Niell Finance</h3>
+  <p id="dialogmessage" class="dialog-message"></p>
+  <input id="dialoginput" class="dialog-input hidden" autocomplete="off">
+  <div class="dialog-actions">
+   <button id="dialogcancel" class="ghost">Batal</button>
+   <button id="dialogok">Oke</button>
+  </div>
+ </div>
+</div>
+
 <script>
 const SUPABASE_URL = "https://wdgvxaicqjcsmtgwiehz.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_zaw7UL-xMi9u5LIC70rNqg_D-1UgJxQ";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function nfDialog(kind,message,defaultValue=''){
+ return new Promise(resolve=>{
+  const backdrop=el('dialogbackdrop'),input=el('dialoginput'),cancel=el('dialogcancel'),ok=el('dialogok');
+  el('dialogtitle').textContent=kind==='prompt'?'Input data':kind==='confirm'?'Konfirmasi':'Pemberitahuan';
+  el('dialogmessage').textContent=String(message??'');
+  input.classList.toggle('hidden',kind!=='prompt');
+  input.value=kind==='prompt'?String(defaultValue??''):'';
+  cancel.classList.toggle('hidden',kind==='alert');
+  ok.textContent=kind==='confirm'?'Ya':'Oke';
+  backdrop.classList.add('open');
+  const finish=value=>{
+   backdrop.classList.remove('open');
+   ok.onclick=null;cancel.onclick=null;input.onkeydown=null;
+   resolve(value);
+  };
+  ok.onclick=()=>finish(kind==='prompt'?input.value:kind==='confirm');
+  cancel.onclick=()=>finish(kind==='prompt'?null:false);
+  input.onkeydown=e=>{if(e.key==='Enter')finish(input.value);if(e.key==='Escape')finish(null)};
+  if(kind==='prompt')setTimeout(()=>input.focus(),0);else ok.focus();
+ });
+}
+function nfAlert(message){return nfDialog('alert',message)}
+function nfConfirm(message){return nfDialog('confirm',message)}
+function nfPrompt(message,defaultValue=''){return nfDialog('prompt',message,defaultValue)}
 const monthKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01'};
 const monthLabel=()=>new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date());
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
@@ -304,20 +353,20 @@ function renderSpendingBreakdown(monthRows){const rows=monthRows.filter(t=>t.typ
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function editWallet(id){
  const wallet=wallets.find(w=>w.id===id);if(!wallet)return;
- const name=prompt('Nama dompet baru:',wallet.name);if(name===null)return;
- const clean=name.trim();if(!clean){alert('Nama dompet tidak boleh kosong.');return}
+ const name=await nfPrompt('Nama dompet baru:',wallet.name);if(name===null)return;
+ const clean=name.trim();if(!clean){nfAlert('Nama dompet tidak boleh kosong.');return}
  const {error}=await db.from('wallets').update({name:clean}).eq('id',id).eq('user_id',user.id);
- if(error){alert('Gagal mengubah dompet: '+error.message);return}
+ if(error){nfAlert('Gagal mengubah dompet: '+error.message);return}
  await loadAll();
 }
 async function deleteWallet(id){
  const wallet=wallets.find(w=>w.id===id);if(!wallet)return;
  const linked=transactions.some(t=>t.source_wallet_id===id||t.destination_wallet_id===id);
- if(linked){alert('Dompet ini masih memiliki riwayat transaksi. Hapus riwayat transaksinya terlebih dahulu.');return}
- if(Number(wallet.balance||0)!==0){alert('Saldo dompet harus Rp0 sebelum dihapus.');return}
- if(!confirm('Hapus dompet '+wallet.name+'?'))return;
+ if(linked){nfAlert('Dompet ini masih memiliki riwayat transaksi. Hapus riwayat transaksinya terlebih dahulu.');return}
+ if(Number(wallet.balance||0)!==0){nfAlert('Saldo dompet harus Rp0 sebelum dihapus.');return}
+ if(!await nfConfirm('Hapus dompet '+wallet.name+'?'))return;
  const {error}=await db.from('wallets').delete().eq('id',id).eq('user_id',user.id);
- if(error){alert('Gagal menghapus dompet: '+error.message);return}
+ if(error){nfAlert('Gagal menghapus dompet: '+error.message);return}
  await loadAll();
 }
 async function boot(session){
@@ -331,7 +380,7 @@ async function boot(session){
 el('logout').onclick=async()=>{await db.auth.signOut();location.reload()};
 document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.page').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.page));el('pagetitle').textContent=b.textContent});
 el('date').value=new Date().toISOString().slice(0,10);
-el('addwallet').onclick=async()=>{const name=el('walletname').value.trim(),balance=Number(el('walletbalance').value||0);if(!name||balance<0)return;const {error}=await db.from('wallets').insert({user_id:user.id,name,balance});if(error){alert(error.message);return}el('walletname').value='';el('walletbalance').value='0';await loadAll()};
+el('addwallet').onclick=async()=>{const name=el('walletname').value.trim(),balance=Number(el('walletbalance').value||0);if(!name||balance<0)return;const {error}=await db.from('wallets').insert({user_id:user.id,name,balance});if(error){nfAlert(error.message);return}el('walletname').value='';el('walletbalance').value='0';await loadAll()};
 ['txsearch','txfiltertype','txfiltermonth','txsort'].forEach(id=>el(id).addEventListener('input',()=>render()));
 el('exporttx').onclick=exportTransactions;
 el('txreset').onclick=()=>{el('txsearch').value='';el('txfiltertype').value='all';el('txfiltermonth').value='';el('txsort').value='newest';render()};
@@ -362,22 +411,22 @@ el('addinvestment').onclick=async()=>{
  if(error){msg('invmsg','Gagal: '+error.message);return}
  el('invname').value='';el('invinitial').value='';el('invcurrent').value='';msg('invmsg','Investasi berhasil ditambahkan.');await loadAll();
 };
-async function updateInvestment(id){const item=investments.find(x=>x.id===id);if(!item)return;const raw=prompt('Masukkan nilai investasi sekarang (Rp):',String(item.current_value));if(raw===null)return;const value=Number(raw);if(!Number.isFinite(value)||value<0){alert('Nominal tidak valid.');return}const {error}=await db.from('investments').update({current_value:value}).eq('id',id).eq('user_id',user.id);if(error){alert('Gagal memperbarui: '+error.message);return}await loadAll()}
+async function updateInvestment(id){const item=investments.find(x=>x.id===id);if(!item)return;const raw=await nfPrompt('Masukkan nilai investasi sekarang (Rp):',String(item.current_value));if(raw===null)return;const value=Number(raw);if(!Number.isFinite(value)||value<0){nfAlert('Nominal tidak valid.');return}const {error}=await db.from('investments').update({current_value:value}).eq('id',id).eq('user_id',user.id);if(error){nfAlert('Gagal memperbarui: '+error.message);return}await loadAll()}
 async function editInvestment(id){
  const item=investments.find(x=>x.id===id);if(!item)return;
- const name=prompt('Nama aset:',item.name||'');if(name===null)return;
- if(!name.trim()){alert('Nama aset tidak boleh kosong.');return}
- const initialRaw=prompt('Modal awal (Rp):',String(item.initial_amount));if(initialRaw===null)return;
+ const name=await nfPrompt('Nama aset:',item.name||'');if(name===null)return;
+ if(!name.trim()){nfAlert('Nama aset tidak boleh kosong.');return}
+ const initialRaw=await nfPrompt('Modal awal (Rp):',String(item.initial_amount));if(initialRaw===null)return;
  const initial=Number(initialRaw);
- if(!Number.isFinite(initial)||initial<=0){alert('Modal awal harus lebih dari nol.');return}
- const currentRaw=prompt('Nilai sekarang (Rp):',String(item.current_value));if(currentRaw===null)return;
+ if(!Number.isFinite(initial)||initial<=0){nfAlert('Modal awal harus lebih dari nol.');return}
+ const currentRaw=await nfPrompt('Nilai sekarang (Rp):',String(item.current_value));if(currentRaw===null)return;
  const current=Number(currentRaw);
- if(!Number.isFinite(current)||current<0){alert('Nilai sekarang tidak valid.');return}
+ if(!Number.isFinite(current)||current<0){nfAlert('Nilai sekarang tidak valid.');return}
  const {error}=await db.from('investments').update({name:name.trim(),initial_amount:initial,current_value:current}).eq('id',id).eq('user_id',user.id);
- if(error){alert('Gagal mengubah investasi: '+error.message);return}
+ if(error){nfAlert('Gagal mengubah investasi: '+error.message);return}
  await loadAll();
 }
-async function deleteInvestment(id){if(!confirm('Hapus data investasi ini?'))return;const {error}=await db.from('investments').delete().eq('id',id).eq('user_id',user.id);if(error){alert('Gagal menghapus: '+error.message);return}await loadAll()}
+async function deleteInvestment(id){if(!await nfConfirm('Hapus data investasi ini?'))return;const {error}=await db.from('investments').delete().eq('id',id).eq('user_id',user.id);if(error){nfAlert('Gagal menghapus: '+error.message);return}await loadAll()}
 function renderInvestments(){const initial=investments.reduce((s,x)=>s+Number(x.initial_amount||0),0),current=investments.reduce((s,x)=>s+Number(x.current_value||0),0),diff=current-initial;let html='';if(!investments.length){html='Belum ada data investasi.'}else{html='<div class="card" style="margin-bottom:12px"><p class="muted">Total modal</p><strong>'+money(initial)+'</strong><p class="muted">Nilai sekarang</p><strong>'+money(current)+'</strong><p class="'+(diff>=0?'pos':'neg')+'">'+(diff>=0?'+':'')+money(diff)+' ('+(initial>0?(diff/initial*100).toFixed(2):'0.00')+'%)</p></div>';html+=investments.map(x=>{const a=Number(x.initial_amount||0),v=Number(x.current_value||0),d=v-a;return '<div class="card" style="margin:12px 0"><strong>'+esc(x.name)+'</strong><p class="muted">Modal awal: '+money(a)+'</p><p>Nilai sekarang: <strong>'+money(v)+'</strong></p><p class="'+(d>=0?'pos':'neg')+'">'+(d>=0?'+':'')+money(d)+' ('+(a>0?(d/a*100).toFixed(2):'0.00')+'%)</p><button onclick="updateInvestment(\''+x.id+'\')">Ubah nilai</button> <button class="ghost" onclick="editInvestment(\''+x.id+'\')">Edit aset</button> <button class="ghost" onclick="deleteInvestment(\''+x.id+'\')">Hapus</button></div>'}).join('')}el('investmentlist').innerHTML=html}
 el('addgoal').onclick=async()=>{
  const name=el('goalname').value.trim(),target_amount=Number(el('goaltarget').value),target_date=el('goaldate').value||null;
@@ -387,59 +436,59 @@ el('addgoal').onclick=async()=>{
  el('goalname').value='';el('goaltarget').value='';el('goaldate').value='';msg('goalmsg','Target berhasil ditambahkan.');await loadAll();
 };
 async function addGoalMoney(id){
- const raw=prompt('Masukkan nominal yang ditambahkan (Rp):');if(raw===null)return;
- const amount=Number(raw);if(!Number.isFinite(amount)||amount<=0){alert('Nominal tidak valid.');return}
+ const raw=await nfPrompt('Masukkan nominal yang ditambahkan (Rp):');if(raw===null)return;
+ const amount=Number(raw);if(!Number.isFinite(amount)||amount<=0){nfAlert('Nominal tidak valid.');return}
  const goal=goals.find(g=>g.id===id);if(!goal)return;
  const {error}=await db.from('savings_goals').update({current_amount:Number(goal.current_amount||0)+amount}).eq('id',id).eq('user_id',user.id);
- if(error){alert('Gagal: '+error.message);return}await loadAll();
+ if(error){nfAlert('Gagal: '+error.message);return}await loadAll();
 }
 async function editGoal(id){
  const goal=goals.find(g=>g.id===id);if(!goal)return;
- const name=prompt('Nama target:',goal.name||'');if(name===null)return;
- if(!name.trim()){alert('Nama target tidak boleh kosong.');return}
- const targetRaw=prompt('Target nominal (Rp):',String(goal.target_amount));if(targetRaw===null)return;
+ const name=await nfPrompt('Nama target:',goal.name||'');if(name===null)return;
+ if(!name.trim()){nfAlert('Nama target tidak boleh kosong.');return}
+ const targetRaw=await nfPrompt('Target nominal (Rp):',String(goal.target_amount));if(targetRaw===null)return;
  const target=Number(targetRaw);
- if(!Number.isFinite(target)||target<=0){alert('Target harus lebih dari nol.');return}
- const currentRaw=prompt('Saldo tabungan saat ini (Rp):',String(goal.current_amount||0));if(currentRaw===null)return;
+ if(!Number.isFinite(target)||target<=0){nfAlert('Target harus lebih dari nol.');return}
+ const currentRaw=await nfPrompt('Saldo tabungan saat ini (Rp):',String(goal.current_amount||0));if(currentRaw===null)return;
  const current=Number(currentRaw);
- if(!Number.isFinite(current)||current<0){alert('Saldo tabungan tidak valid.');return}
- const dateRaw=prompt('Target tanggal (YYYY-MM-DD, kosongkan jika tidak ada):',goal.target_date||'');if(dateRaw===null)return;
+ if(!Number.isFinite(current)||current<0){nfAlert('Saldo tabungan tidak valid.');return}
+ const dateRaw=await nfPrompt('Target tanggal (YYYY-MM-DD, kosongkan jika tidak ada):',goal.target_date||'');if(dateRaw===null)return;
  const target_date=dateRaw.trim()||null;
- if(target_date&&!/^\d{4}-\d{2}-\d{2}$/.test(target_date)){alert('Format tanggal harus YYYY-MM-DD.');return}
+ if(target_date&&!/^\d{4}-\d{2}-\d{2}$/.test(target_date)){nfAlert('Format tanggal harus YYYY-MM-DD.');return}
  const {error}=await db.from('savings_goals').update({name:name.trim(),target_amount:target,current_amount:current,target_date}).eq('id',id).eq('user_id',user.id);
- if(error){alert('Gagal mengubah target: '+error.message);return}
+ if(error){nfAlert('Gagal mengubah target: '+error.message);return}
  await loadAll();
 }
 async function deleteGoal(id){
- if(!confirm('Hapus target tabungan ini?'))return;
+ if(!await nfConfirm('Hapus target tabungan ini?'))return;
  const {error}=await db.from('savings_goals').delete().eq('id',id).eq('user_id',user.id);
- if(error){alert('Gagal: '+error.message);return}await loadAll();
+ if(error){nfAlert('Gagal: '+error.message);return}await loadAll();
 }
 async function editTransaction(id){
  const tx=transactions.find(t=>t.id===id);if(!tx)return;
- if(!wallets.length){alert('Belum ada dompet.');return}
- const type=prompt('Jenis transaksi: income untuk pemasukan, expense untuk pengeluaran.',tx.type);
+ if(!wallets.length){nfAlert('Belum ada dompet.');return}
+ const type=await nfPrompt('Jenis transaksi: income untuk pemasukan, expense untuk pengeluaran.',tx.type);
  if(type===null)return;
  const cleanType=type.trim().toLowerCase();
- if(!['income','expense'].includes(cleanType)){alert('Jenis harus income atau expense.');return}
- const name=prompt('Nama transaksi:',tx.name||'');if(name===null)return;
- const amountRaw=prompt('Nominal (Rp):',String(tx.amount));if(amountRaw===null)return;
+ if(!['income','expense'].includes(cleanType)){nfAlert('Jenis harus income atau expense.');return}
+ const name=await nfPrompt('Nama transaksi:',tx.name||'');if(name===null)return;
+ const amountRaw=await nfPrompt('Nominal (Rp):',String(tx.amount));if(amountRaw===null)return;
  const amount=Number(amountRaw);
- if(!Number.isFinite(amount)||amount<=0){alert('Nominal tidak valid.');return}
- const dateInput=prompt('Tanggal (DD/MM/YYYY atau YYYY-MM-DD):',tx.date||'');if(dateInput===null)return;
+ if(!Number.isFinite(amount)||amount<=0){nfAlert('Nominal tidak valid.');return}
+ const dateInput=await nfPrompt('Tanggal (DD/MM/YYYY atau YYYY-MM-DD):',tx.date||'');if(dateInput===null)return;
  const dateNums=dateInput.match(/[0-9]+/g)||[];
- if(dateNums.length!==3){alert('Masukkan tanggal dengan 3 bagian, contoh 25/11/2026.');return}
+ if(dateNums.length!==3){nfAlert('Masukkan tanggal dengan 3 bagian, contoh 25/11/2026.');return}
  let year,month,day;
  if(dateNums[0].length===4){year=Number(dateNums[0]);month=Number(dateNums[1]);day=Number(dateNums[2])}
  else{day=Number(dateNums[0]);month=Number(dateNums[1]);year=Number(dateNums[2])}
- if(!year||month<1||month>12||day<1||day>31){alert('Tanggal tidak valid. Contoh: 25/11/2026');return}
+ if(!year||month<1||month>12||day<1||day>31){nfAlert('Tanggal tidak valid. Contoh: 25/11/2026');return}
  const date=String(year).padStart(4,'0')+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
- const category=prompt('Kategori:',tx.category||'Lainnya');if(category===null)return;
+ const category=await nfPrompt('Kategori:',tx.category||'Lainnya');if(category===null)return;
  const walletChoices=wallets.map((w,i)=>(i+1)+'. '+w.name+' ('+money(w.balance)+')').join('\n');
  const currentIndex=Math.max(0,wallets.findIndex(w=>w.id===tx.source_wallet_id));
- const walletChoice=prompt('Pilih nomor dompet:\n'+walletChoices,String(currentIndex+1));if(walletChoice===null)return;
+ const walletChoice=await nfPrompt('Pilih nomor dompet:\n'+walletChoices,String(currentIndex+1));if(walletChoice===null)return;
  const walletIndex=Number(walletChoice)-1;
- if(!Number.isInteger(walletIndex)||!wallets[walletIndex]){alert('Nomor dompet tidak valid.');return}
+ if(!Number.isInteger(walletIndex)||!wallets[walletIndex]){nfAlert('Nomor dompet tidak valid.');return}
  const {error}=await db.rpc('update_wallet_transaction',{
   p_transaction_id:id,
   p_wallet_id:wallets[walletIndex].id,
@@ -449,13 +498,13 @@ async function editTransaction(id){
   p_date:date,
   p_category:category
  });
- if(error){alert('Gagal mengubah transaksi: '+error.message);return}
+ if(error){nfAlert('Gagal mengubah transaksi: '+error.message);return}
  await loadAll();
 }
 async function deleteTransaction(id){
- if(!confirm('Hapus transaksi ini? Saldo dompet juga akan dikoreksi.'))return;
+ if(!await nfConfirm('Hapus transaksi ini? Saldo dompet juga akan dikoreksi.'))return;
  const {error}=await db.rpc('delete_wallet_transaction',{p_transaction_id:id});
- if(error){alert('Gagal menghapus: '+error.message);return}
+ if(error){nfAlert('Gagal menghapus: '+error.message);return}
  await loadAll();
 }
 function renderMonthlyAllocation(){
