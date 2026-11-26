@@ -103,7 +103,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 #txcount{font-size:12px;color:#91a6c7}.tx-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 14px}.tx-total{padding:12px 14px;border:1px solid rgba(107,139,190,.17);border-radius:12px;background:rgba(20,34,58,.72);min-width:0}.tx-total span{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}.tx-total strong{font-size:15px;overflow-wrap:anywhere}
 @media(max-width:720px){.txfilters{grid-template-columns:1fr 1fr}.txfilters input[type=search]{grid-column:1/-1}.txfilters button{grid-column:1/-1}.tx-totals{grid-template-columns:1fr}}
 
-/* Themed dialog */
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;margin-top:14px}.calendar-cell{min-height:68px;padding:8px 4px;border:1px solid var(--line);border-radius:10px;background:#0b1527;color:#eaf2ff;text-align:center}.calendar-cell.head{min-height:auto;background:transparent;border:0;color:var(--muted);font-size:12px}.calendar-cell.selected{border-color:#5797ff;background:rgba(79,145,255,.16)}.calendar-cell.today{box-shadow:inset 0 0 0 1px #35c995}.calendar-dot{display:block;width:6px;height:6px;border-radius:50%;background:#4f8cff;margin:6px auto 0}.calendar-empty{visibility:hidden}@media(max-width:520px){.calendar-grid{gap:4px}.calendar-cell{min-height:54px;padding:6px 2px;font-size:12px}}\n/* Themed dialog */
 .dialog-backdrop{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(2,7,16,.76);backdrop-filter:blur(8px)}
 .dialog-backdrop.open{display:flex}
 .dialog-box{width:min(100%,440px);padding:22px;border:1px solid rgba(91,151,255,.3);border-radius:18px;background:linear-gradient(145deg,#172944,#0d1729);box-shadow:0 28px 90px rgba(0,0,0,.55)}
@@ -433,6 +433,47 @@ async function deleteCategoryBudget(index){
  categoryBudgets.splice(index,1);await persistCategoryBudgets();
 }
 function renderSettings(){const email=user?.email||'Tidak tersedia',username=user?.user_metadata?.username||email.split('@')[0];el('accountinfo').innerHTML='<div><span class="muted">Username</span><br><strong>'+esc(username)+'</strong></div><div style="margin-top:10px"><span class="muted">Email akun</span><br><strong>'+esc(email)+'</strong></div>'}
+
+let calendarMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1),calendarSelected=new Date().toISOString().slice(0,10);
+function renderCalendar(){
+ const y=calendarMonth.getFullYear(),m=calendarMonth.getMonth(),first=new Date(y,m,1),days=new Date(y,m+1,0).getDate(),offset=(first.getDay()+6)%7;
+ el('calmonth').textContent=calendarMonth.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+ const headers=['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(x=>'<div class="calendar-cell head">'+x+'</div>').join('');
+ let cells='';
+ for(let n=0;n<offset;n++)cells+='<div class="calendar-cell calendar-empty"></div>';
+ for(let day=1;day<=days;day++){
+  const key=y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'),has=transactions.some(t=>String(t.date||'').slice(0,10)===key),today=key===new Date().toISOString().slice(0,10);
+  cells+='<button class="calendar-cell '+(calendarSelected===key?'selected ':'')+(today?'today':'')+'" data-caldate="'+key+'">'+day+(has?'<span class="calendar-dot"></span>':'')+'</button>';
+ }
+ el('calgrid').innerHTML=headers+cells;
+ el('calgrid').querySelectorAll('[data-caldate]').forEach(b=>b.onclick=()=>{calendarSelected=b.dataset.caldate;renderCalendar();renderCalendarDay()});
+ renderCalendarDay();
+}
+function renderCalendarDay(){
+ el('caldaytitle').textContent='Transaksi '+new Date(calendarSelected+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+ const rows=transactions.filter(t=>String(t.date||'').slice(0,10)===calendarSelected);
+ el('caldaylist').innerHTML=rows.length?rows.map(t=>'<div class="tx-total" style="margin:8px 0"><strong>'+esc(t.name||'Transaksi')+'</strong><div class="muted">'+esc(t.category||'')+' · '+(t.type==='income'?'Pemasukan':'Pengeluaran')+'</div><strong class="'+(t.type==='income'?'pos':'neg')+'">'+money(t.amount)+'</strong></div>').join(''):'Tidak ada transaksi pada tanggal ini.';
+}
+el('calprev').onclick=()=>{calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()-1,1);renderCalendar()};
+el('calnext').onclick=()=>{calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()+1,1);renderCalendar()};
+el('changepassword').onclick=async()=>{
+ const current=el('currentpass').value,newpass=el('newpass').value,confirm=el('confirmpass').value;
+ if(!current||!newpass||!confirm){msg('passwordmsg','Isi semua kolom password.');return}
+ if(newpass.length<8){msg('passwordmsg','Password baru minimal 8 karakter.');return}
+ if(newpass!==confirm){msg('passwordmsg','Konfirmasi password baru tidak cocok.');return}
+ if(newpass===current){msg('passwordmsg','Password baru harus berbeda.');return}
+ const btn=el('changepassword');btn.disabled=true;msg('passwordmsg','Memverifikasi password saat ini...');
+ try{
+  const {error:verifyError}=await db.auth.signInWithPassword({email:user.email,password:current});
+  if(verifyError)throw new Error('Password saat ini tidak benar.');
+  const {error}=await db.auth.updateUser({password:newpass});
+  if(error)throw error;
+  el('currentpass').value='';el('newpass').value='';el('confirmpass').value='';
+  msg('passwordmsg','Password berhasil diganti.');
+ }catch(error){msg('passwordmsg','Gagal mengganti password: '+(error.message||'Terjadi kesalahan'))}
+ finally{btn.disabled=false}
+};
+
 el('settingslogout').onclick=()=>el('logout').click();
 function goPage(page){const btn=document.querySelector('[data-page="'+page+'"]');if(!btn)return;document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===btn));document.querySelectorAll('.page').forEach(x=>x.classList.toggle('hidden',x.id!==page));el('pagetitle').textContent=btn.textContent;window.scrollTo({top:0,behavior:'smooth'})}
 function renderCashflow(currentMonthTransactions){
