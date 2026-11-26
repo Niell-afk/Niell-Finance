@@ -14,7 +14,15 @@ drop policy if exists "Users can view own future savings activity" on public.fut
 create policy "Users can view own future savings activity"
 on public.future_savings_activity for select
 to authenticated using (auth.uid() = user_id);
-grant select on public.future_savings_activity to authenticated;
+drop policy if exists "Users can insert own future savings activity" on public.future_savings_activity;
+create policy "Users can insert own future savings activity"
+on public.future_savings_activity for insert
+to authenticated with check (auth.uid() = user_id);
+drop policy if exists "Users can update own future savings activity" on public.future_savings_activity;
+create policy "Users can update own future savings activity"
+on public.future_savings_activity for update
+to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+grant select, insert, update on public.future_savings_activity to authenticated;
 
 create or replace function public.use_future_savings(
   p_amount numeric,
