@@ -625,13 +625,7 @@ el('exportpdf').onclick=()=>{
  const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const body=rows.map(t=>'<tr><td>'+safe(t.date)+'</td><td>'+safe(t.name)+'</td><td>'+safe(t.category)+'</td><td>'+(t.type==='income'?'Pemasukan':'Pengeluaran')+'</td><td>'+money(t.amount)+'</td></tr>').join('');
  const w=window.open('','_blank');if(!w){msg('pdfmsg','Pop-up diblokir. Izinkan pop-up untuk situs ini.');return}
- w.document.write('<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Laporan Niell Finance</title><style>body{font:12px Arial;padding:28px;color:#182238}h1{margin-bottom:4px}.summary{display:flex;gap:12px;margin:20px 0}.box{border:1px solid #ccd3df;padding:12px;flex:1}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{text-align:left;padding:8px;border-bottom:1px solid #ddd}th{background:#eef2f8}</style></head><body><h1>Niell Finance</h1><p>Laporan '+safe(from)+' sampai '+safe(to)+'</p><div class="summary"><div class="box">Pemasukan<br><b>'+money(inc)+'</b></div><div class="box">Pengeluaran<br><b>'+money(out)+'</b></div><div class="box">Selisih<br><b>'+money(inc-out)+'</b></div></div><p>Jumlah transaksi: '+rows.length+'</p><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Kategori</th><th>Jenis</th><th>Nominal</th></tr></thead><tbody>'+body+'</tbody></table><script>window.onload=function(){window.print()}<\/script><script>
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(err=>console.warn('PWA service worker:',err)));}
-let niellInstallPrompt=null;
-window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();niellInstallPrompt=event;const btn=document.getElementById('installapp');if(btn)btn.hidden=false;});
-window.addEventListener('appinstalled',()=>{niellInstallPrompt=null;const btn=document.getElementById('installapp');if(btn)btn.hidden=true;});
-document.addEventListener('click',async event=>{const btn=event.target.closest('#installapp');if(!btn)return;if(!niellInstallPrompt){alert('Untuk memasang: buka menu Chrome (⋮), lalu pilih Install app atau Add to Home screen.');return;}niellInstallPrompt.prompt();await niellInstallPrompt.userChoice;niellInstallPrompt=null;btn.hidden=true;});
-</script></body></html>');
+ w.document.write('<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Laporan Niell Finance</title><style>body{font:12px Arial;padding:28px;color:#182238}h1{margin-bottom:4px}.summary{display:flex;gap:12px;margin:20px 0}.box{border:1px solid #ccd3df;padding:12px;flex:1}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{text-align:left;padding:8px;border-bottom:1px solid #ddd}th{background:#eef2f8}</style></head><body><h1>Niell Finance</h1><p>Laporan '+safe(from)+' sampai '+safe(to)+'</p><div class="summary"><div class="box">Pemasukan<br><b>'+money(inc)+'</b></div><div class="box">Pengeluaran<br><b>'+money(out)+'</b></div><div class="box">Selisih<br><b>'+money(inc-out)+'</b></div></div><p>Jumlah transaksi: '+rows.length+'</p><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Kategori</th><th>Jenis</th><th>Nominal</th></tr></thead><tbody>'+body+'</tbody></table><script>window.onload=function(){window.print()}<\/script></body></html>');
  w.document.close();msg('pdfmsg','Pilih Save as PDF pada dialog cetak.');
 };
 
@@ -826,6 +820,35 @@ function renderEmergency(){
 }
 db.auth.getSession().then(({data})=>{if(data.session)boot(data.session)});
 db.auth.onAuthStateChange((_event,session)=>{if(session&&!user)boot(session)});
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(err => console.warn('PWA service worker:', err)));
+}
+let niellInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', event => {
+ event.preventDefault();
+ niellInstallPrompt = event;
+ const btn = document.getElementById('installapp');
+ if (btn) btn.hidden = false;
+});
+window.addEventListener('appinstalled', () => {
+ niellInstallPrompt = null;
+ const btn = document.getElementById('installapp');
+ if (btn) btn.hidden = true;
+});
+document.addEventListener('click', async event => {
+ const btn = event.target.closest('#installapp');
+ if (!btn) return;
+ if (!niellInstallPrompt) {
+  alert('Untuk memasang: buka menu Chrome (⋮), lalu pilih Install app atau Add to Home screen.');
+  return;
+ }
+ niellInstallPrompt.prompt();
+ await niellInstallPrompt.userChoice;
+ niellInstallPrompt = null;
+ btn.hidden = true;
+});
 </script>
 </body>
 </html>
