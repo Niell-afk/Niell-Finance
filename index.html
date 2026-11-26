@@ -416,7 +416,7 @@ body > #dialogbackdrop .dialog-box{
 <section id="investments" class="page hidden"><div class="card"><h3>Tambah investasi</h3><div class="formgrid"><div><label>Nama aset</label><input id="invname" placeholder="Contoh: Reksa dana / Emas"></div><div><label>Modal awal (Rp)</label><input id="invinitial" type="number" min="1" placeholder="500000"></div><div><label>Nilai sekarang (Rp)</label><input id="invcurrent" type="number" min="0" placeholder="500000"></div></div><p><button id="addinvestment">Tambah investasi</button></p><div id="invmsg" class="muted"></div></div><div class="section card"><h3>Portofolio investasi</h3><div id="investmentlist" class="muted">Memuat...</div></div></section>
 <section id="emergency" class="page hidden">
 <div class="grid" id="emsummary">
-<div class="card"><div class="muted">Total dana terkumpul</div><div class="metric pos" id="emtotal">Rp0</div></div>
+<div class="card"><div class="muted">Total dana terkumpul</div><div class="metric pos" id="emtotal">Rp0</div><button class="ghost" id="resetemergency" style="margin-top:12px">Hapus saldo</button></div>
 <div class="card"><div class="muted">Alokasi bulan ini</div><div class="metric" id="emmonthly">Rp0</div></div>
 <div class="card"><div class="muted">Setoran bulan ini</div><div class="metric" id="emdeposited">Rp0</div></div>
 </div>
@@ -1041,6 +1041,17 @@ function renderGoals(){
   <button onclick="addGoalMoney('${g.id}')">Tambah saldo</button> <button class="ghost" onclick="editGoal('${g.id}')">Ubah target</button> <button class="ghost" onclick="deleteGoal('${g.id}')">Hapus</button></div>`;
  }).join(''):'Belum ada target tabungan.';
 }
+el('resetemergency').onclick=async()=>{
+ if(!await nfConfirm('Hapus seluruh saldo dana darurat dan setoran bulan ini? Target total dan alokasi gaji tidak akan berubah.'))return;
+ const target=Number(emergency?.target||0);
+ const {error}=await db.from('emergency_fund').upsert({user_id:user.id,target,current:0,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+ if(error){msg('emmsg','Gagal menghapus saldo: '+error.message);return}
+ const tracking={month_key:monthKey(),monthly_deposited:0};
+ const {data,error:metaError}=await db.auth.updateUser({data:{emergency_deposit_tracking:tracking}});
+ emergency={...(emergency||{}),target,current:0};emergencyDepositTracking=tracking;
+ renderEmergency();msg('emmsg',metaError?'Saldo dihapus, tetapi riwayat setoran bulan ini gagal disinkronkan.':'Saldo dana darurat dan setoran bulan ini berhasil dihapus.');
+ if(data?.user)user=data.user;
+};
 el('saveemergency').onclick=async()=>{
  const target=Number(el('emtarget').value);
  if(!Number.isFinite(target)||target<0){msg('emmsg','Target harus berupa nominal nol atau lebih.');return}
