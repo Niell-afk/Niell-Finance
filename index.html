@@ -1047,7 +1047,7 @@ el('resetemergency').onclick=async()=>{
  const {error}=await db.from('emergency_fund').upsert({user_id:user.id,target,current:0,updated_at:new Date().toISOString()},{onConflict:'user_id'});
  if(error){msg('emmsg','Gagal menghapus saldo: '+error.message);return}
  const tracking={month_key:monthKey(),monthly_deposited:0};
- const {data,error:metaError}=await db.auth.updateUser({data:{emergency_deposit_tracking:tracking}});
+ const {data,error:metaError}=await db.auth.updateUser({data:{emergency_deposit_tracking:tracking,emergency_deposits:[]}});
  emergency={...(emergency||{}),target,current:0};emergencyDepositTracking=tracking;
  renderEmergency();msg('emmsg',metaError?'Saldo dihapus, tetapi riwayat setoran bulan ini gagal disinkronkan.':'Saldo dana darurat dan setoran bulan ini berhasil dihapus.');
  if(data?.user)user=data.user;
@@ -1068,11 +1068,42 @@ el('addemdeposit').onclick=async()=>{
  if(error){msg('emdepositmsg','Setoran gagal disimpan: '+error.message);return}
  const key=monthKey(),prior=emergencyDepositTracking.month_key===key?Number(emergencyDepositTracking.monthly_deposited||0):0;
  const tracking={month_key:key,monthly_deposited:prior+amount};
- const {data,error:metaError}=await db.auth.updateUser({data:{emergency_deposit_tracking:tracking}});
+ const deposits=Array.isArray(user.user_metadata?.emergency_deposits)?user.user_metadata.emergency_deposits.slice():[];
+ deposits.unshift({id:crypto.randomUUID(),amount,date:new Date().toISOString().slice(0,10),created_at:new Date().toISOString()});
+ const {data,error:metaError}=await db.auth.updateUser({data:{emergency_deposit_tracking:tracking,emergency_deposits:deposits}});
  emergency={...(emergency||{}),target,current};emergencyDepositTracking=tracking;
  el('emdepositinput').value='';renderEmergency();
- msg('emdepositmsg',metaError?'Setoran masuk ke total dana, tetapi riwayat setoran bulan ini gagal disinkronkan.':'Setoran berhasil ditambahkan.');
+ msg('emdepositmsg',metaError?'Saldo bertambah, tetapi riwayat setoran gagal disimpan.':'Setoran berhasil ditambahkan.');
  if(data?.user)user=data.user;
+};
+window.editEmergencyDeposit=async id=>{
+ const deposits=Array.isArray(user.user_metadata?.emergency_deposits)?user.user_metadata.emergency_deposits.slice():[];
+ const item=deposits.find(x=>x.id===id);if(!item)return;
+ const raw=await nfPrompt('Ubah nominal setoran dana darurat (Rp):',String(item.amount));
+ if(raw===null)return;
+ const amount=Number(String(raw).replace(/[^0-9]/g,''));
+ if(!Number.isFinite(amount)||amount<=0){msg('emdepositmsg','Nominal harus lebih dari Rp0.');return}
+ const delta=amount-Number(item.amount||0),target=Number(emergency?.target||0),current=Math.max(0,Number(emergency?.current||0)+delta);
+ const {error}=await db.from('emergency_fund').upsert({user_id:user.id,target,current,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+ if(error){msg('emdepositmsg','Gagal mengoreksi saldo: '+error.message);return}
+ item.amount=amount;
+ const key=monthKey(),tracking={month_key:emergencyDepositTracking.month_key,monthly_deposited:Number(emergencyDepositTracking.monthly_deposited||0)};
+ if(item.date?.startsWith(key.slice(0,7))&&tracking.month_key===key)tracking.monthly_deposited=Math.max(0,tracking.monthly_deposited+delta);
+ const {data,error:metaError}=await db.auth.updateUser({data:{emergency_deposits:deposits,emergency_deposit_tracking:tracking}});
+ emergency={...(emergency||{}),target,current};emergencyDepositTracking=tracking;if(data?.user)user=data.user;
+ renderEmergency();msg('emdepositmsg',metaError?'Saldo terkoreksi, tetapi riwayat gagal disinkronkan.':'Nominal setoran berhasil dikoreksi.');
+};
+window.deleteEmergencyDeposit=async id=>{
+ const deposits=Array.isArray(user.user_metadata?.emergency_deposits)?user.user_metadata.emergency_deposits.slice():[];
+ const item=deposits.find(x=>x.id===id);if(!item||!await nfConfirm('Hapus setoran '+money(item.amount)+' dari riwayat Dana Darurat? Saldo total akan dikurangi.'))return;
+ const target=Number(emergency?.target||0),current=Math.max(0,Number(emergency?.current||0)-Number(item.amount||0));
+ const {error}=await db.from('emergency_fund').upsert({user_id:user.id,target,current,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+ if(error){msg('emdepositmsg','Gagal menghapus setoran: '+error.message);return}
+ const remaining=deposits.filter(x=>x.id!==id),key=monthKey(),tracking={month_key:emergencyDepositTracking.month_key,monthly_deposited:Number(emergencyDepositTracking.monthly_deposited||0)};
+ if(item.date?.startsWith(key.slice(0,7))&&tracking.month_key===key)tracking.monthly_deposited=Math.max(0,tracking.monthly_deposited-Number(item.amount||0));
+ const {data,error:metaError}=await db.auth.updateUser({data:{emergency_deposits:remaining,emergency_deposit_tracking:tracking}});
+ emergency={...(emergency||{}),target,current};emergencyDepositTracking=tracking;if(data?.user)user=data.user;
+ renderEmergency();msg('emdepositmsg',metaError?'Saldo dikurangi, tetapi riwayat gagal disinkronkan.':'Setoran berhasil dihapus dari Dana Darurat.');
 };
 function emergencyMonthlyAllocation(){
  const item=salaryPlan.items.find(x=>x.name.toLowerCase()==='dana darurat');
@@ -1089,7 +1120,9 @@ function renderEmergency(){
  el('addemdeposit').disabled=monthly<=0;
  const monthlyStatus=monthly>0?(deposited>=monthly?'Alokasi bulan ini tercapai.':'Tersisa '+money(monthly-deposited)+' dari jatah bulan ini.'):'Belum ada alokasi bulanan.';
  const targetStatus=target>0?'<p>Target total: <strong>'+money(current)+' / '+money(target)+'</strong> · '+pct.toFixed(1)+'% tercapai</p><div class="goal-progress"><span style="width:'+pct+'%"></span></div>':'<p class="muted">Target total belum diatur. Kamu tetap bisa mencatat setoran.</p>';
- el('emview').innerHTML='<div class="muted">Progress setoran bulan ini</div><strong>'+money(deposited)+' / '+money(monthly)+'</strong><p>'+monthlyPct.toFixed(1)+'% dari alokasi bulanan</p><div class="goal-progress"><span style="width:'+monthlyPct+'%"></span></div><p>'+monthlyStatus+'</p>'+targetStatus+'<p class="muted">Total dana terkumpul tersimpan terpisah dari setoran bulan ini.</p>';
+ const deposits=Array.isArray(user.user_metadata?.emergency_deposits)?user.user_metadata.emergency_deposits:[];
+ const history=deposits.length?'<div class="section"><h4>Riwayat setoran</h4>'+deposits.map(x=>'<div class="card" style="margin:8px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><strong>'+money(x.amount)+'</strong><div class="muted">'+esc(x.date||'Tanggal tidak tersedia')+'</div></div><div><button class="ghost" onclick="editEmergencyDeposit(\''+esc(x.id)+'\')">Koreksi</button> <button class="ghost" onclick="deleteEmergencyDeposit(\''+esc(x.id)+'\')">Hapus</button></div></div>').join('')+'</div>':'<p class="muted">Belum ada riwayat setoran baru. Setoran lama tetap masuk dalam saldo awal.</p>';
+ el('emview').innerHTML='<div class="muted">Progress setoran bulan ini</div><strong>'+money(deposited)+' / '+money(monthly)+'</strong><p>'+monthlyPct.toFixed(1)+'% dari alokasi bulanan</p><div class="goal-progress"><span style="width:'+monthlyPct+'%"></span></div><p>'+monthlyStatus+'</p>'+targetStatus+'<p class="muted">Total dana terkumpul tersimpan terpisah dari setoran bulan ini.</p>'+history;
 }
 db.auth.getSession().then(({data})=>{if(data.session)boot(data.session)});
 db.auth.onAuthStateChange((_event,session)=>{if(session&&!user)boot(session)});
