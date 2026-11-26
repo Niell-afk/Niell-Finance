@@ -335,6 +335,8 @@ body > #dialogbackdrop .dialog-box{
 .wisdom-author{margin-top:10px;font-size:11px;color:#83b8ff;font-weight:750}
 .wisdom-source{margin-top:5px;font-size:9px;line-height:1.4;color:#7189aa}
 @media(max-width:680px){.daily-wisdom{margin-top:10px;padding:12px 13px}.daily-wisdom blockquote{font-size:12px}.wisdom-source{font-size:9px}}
+
+#emsummary .card{min-width:0}#emsummary .metric{overflow-wrap:anywhere}#emview .goal-progress{margin:10px 0 14px}#emview p{margin:8px 0;color:#c5d3e9}@media(max-width:680px){#emsummary{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -412,11 +414,24 @@ body > #dialogbackdrop .dialog-box{
 </div><p><button id="saveallocation">Simpan alokasi</button></p><div id="allocationprogress" class="muted">Belum ada alokasi bulan ini.</div><div id="allocationmsg" class="muted"></div></div><div class="section card"><h3>Riwayat alokasi bulanan</h3><div class="tablewrap" id="allocationhistory">Belum ada riwayat.</div></div>
 </section>
 <section id="investments" class="page hidden"><div class="card"><h3>Tambah investasi</h3><div class="formgrid"><div><label>Nama aset</label><input id="invname" placeholder="Contoh: Reksa dana / Emas"></div><div><label>Modal awal (Rp)</label><input id="invinitial" type="number" min="1" placeholder="500000"></div><div><label>Nilai sekarang (Rp)</label><input id="invcurrent" type="number" min="0" placeholder="500000"></div></div><p><button id="addinvestment">Tambah investasi</button></p><div id="invmsg" class="muted"></div></div><div class="section card"><h3>Portofolio investasi</h3><div id="investmentlist" class="muted">Memuat...</div></div></section>
-<section id="emergency" class="page hidden"><div class="card"><h3>Dana darurat</h3>
-<div class="formgrid"><div><label>Target dana darurat (Rp)</label><input id="emtarget" type="number" min="0" placeholder="Contoh: 5000000"></div>
-<div><label>Saldo terkumpul (Rp)</label><input id="emcurrent" type="number" min="0" placeholder="Contoh: 500000"></div></div>
-<p><button id="saveemergency">Simpan dana darurat</button></p><div id="emmsg" class="muted"></div>
-</div><div class="section card"><h3>Progress dana darurat</h3><div id="emview" class="muted">Belum ada data.</div></div></section>
+<section id="emergency" class="page hidden">
+<div class="grid" id="emsummary">
+<div class="card"><div class="muted">Total dana terkumpul</div><div class="metric pos" id="emtotal">Rp0</div></div>
+<div class="card"><div class="muted">Alokasi bulan ini</div><div class="metric" id="emmonthly">Rp0</div></div>
+<div class="card"><div class="muted">Setoran bulan ini</div><div class="metric" id="emdeposited">Rp0</div></div>
+</div>
+<div class="section card"><h3>Pengaturan target dana darurat</h3>
+<p class="muted">Nominal alokasi bulanan otomatis mengikuti kategori Dana darurat di bagian Alokasi Gaji.</p>
+<div class="formgrid"><div><label>Target total dana darurat (Rp)</label><input id="emtarget" type="number" min="0" step="1000" placeholder="Contoh: 5000000"></div></div>
+<p><button id="saveemergency">Simpan target total</button> <span id="emmsg" class="muted"></span></p>
+</div>
+<div class="section card"><h3>Catat setoran</h3>
+<p class="muted" id="emdepositguide">Alokasi bulanan akan muncul di sini.</p>
+<div class="formgrid"><div><label>Nominal setoran (Rp)</label><input id="emdepositinput" type="number" min="1" step="1000" placeholder="Contoh: 50000"></div></div>
+<p><button id="addemdeposit">Tambah setoran</button> <span id="emdepositmsg" class="muted"></span></p>
+</div>
+<div class="section card"><h3>Progress dana darurat</h3><div id="emview" class="muted">Belum ada data.</div></div>
+</section>
 <section id="statistics" class="page hidden">
 <div class="grid"><div class="card"><div class="muted">Total pemasukan</div><div class="metric pos" id="statincome">Rp0</div></div><div class="card"><div class="muted">Total pengeluaran</div><div class="metric neg" id="statexpense">Rp0</div></div><div class="card"><div class="muted">Selisih arus kas</div><div class="metric" id="statnet">Rp0</div></div></div>
 <div class="section card"><h3>Ringkasan bulanan</h3><div class="tablewrap" id="statmonths">Belum ada data transaksi.</div></div><div class="section card"><h3>Perbandingan bulan ini vs bulan lalu</h3><div id="monthcomparison" class="grid"></div></div>
@@ -475,7 +490,7 @@ const monthKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMo
 const monthLabel=()=>new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date());
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const el=id=>document.getElementById(id);
-let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=null, monthlyAllocation=null, monthlyAllocations=[], categoryBudgets=[], budgetAlertHistory=[], budgetAlertStates={}, budgetAlertSaving=false, recurringTransactions=[], authMode='login', booting=false;
+let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=null, emergencyDepositTracking={month_key:'',monthly_deposited:0}, monthlyAllocation=null, monthlyAllocations=[], categoryBudgets=[], budgetAlertHistory=[], budgetAlertStates={}, budgetAlertSaving=false, recurringTransactions=[], authMode='login', booting=false;
 const allocationDefaults=[{name:'Kebutuhan',amount:350000},{name:'Tabungan',amount:350000},{name:'Tagihan',amount:250000},{name:'Dana darurat',amount:200000},{name:'Keluarga',amount:200000},{name:'Hiburan',amount:150000}];
 let salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))};
 const allocColors=['#4f8cff','#35c995','#a78bfa','#f5b84b','#ff7185','#36c6d8'];
@@ -806,7 +821,7 @@ function renderDailyWisdom(){
 
 async function boot(session){
  if(booting)return; booting=true;
- user=session.user;renderDailyWisdom();categoryBudgets=Array.isArray(user.user_metadata?.category_budgets)?user.user_metadata.category_budgets.filter(x=>x&&typeof x.category==='string'&&Number(x.limit)>0).map(x=>({category:x.category,limit:Number(x.limit)})):[];budgetAlertHistory=Array.isArray(user.user_metadata?.budget_alert_history)?user.user_metadata.budget_alert_history.slice(0,50):[];budgetAlertStates=user.user_metadata?.budget_alert_states&&typeof user.user_metadata.budget_alert_states==='object'?{...user.user_metadata.budget_alert_states}:{};recurringTransactions=Array.isArray(user.user_metadata?.recurring_transactions)?user.user_metadata.recurring_transactions.filter(x=>x&&x.id&&x.name&&Number(x.amount)>0):[];const savedPlan=user.user_metadata?.salary_allocation;if(savedPlan&&Array.isArray(savedPlan.items)&&savedPlan.items.length===allocationDefaults.length){salaryPlan={total:Number(savedPlan.total)||1500000,mode:savedPlan.mode==='percentage'?'percentage':'fixed',items:savedPlan.items.map((x,i)=>({name:allocationDefaults[i].name,amount:Number(x.amount)||0}))}}else{salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))}}el('auth').classList.add('hidden');el('app').classList.remove('hidden');
+ user=session.user;emergencyDepositTracking=user.user_metadata?.emergency_deposit_tracking&&typeof user.user_metadata.emergency_deposit_tracking==='object'?user.user_metadata.emergency_deposit_tracking:{month_key:'',monthly_deposited:0};renderDailyWisdom();categoryBudgets=Array.isArray(user.user_metadata?.category_budgets)?user.user_metadata.category_budgets.filter(x=>x&&typeof x.category==='string'&&Number(x.limit)>0).map(x=>({category:x.category,limit:Number(x.limit)})):[];budgetAlertHistory=Array.isArray(user.user_metadata?.budget_alert_history)?user.user_metadata.budget_alert_history.slice(0,50):[];budgetAlertStates=user.user_metadata?.budget_alert_states&&typeof user.user_metadata.budget_alert_states==='object'?{...user.user_metadata.budget_alert_states}:{};recurringTransactions=Array.isArray(user.user_metadata?.recurring_transactions)?user.user_metadata.recurring_transactions.filter(x=>x&&x.id&&x.name&&Number(x.amount)>0):[];const savedPlan=user.user_metadata?.salary_allocation;if(savedPlan&&Array.isArray(savedPlan.items)&&savedPlan.items.length===allocationDefaults.length){salaryPlan={total:Number(savedPlan.total)||1500000,mode:savedPlan.mode==='percentage'?'percentage':'fixed',items:savedPlan.items.map((x,i)=>({name:allocationDefaults[i].name,amount:Number(x.amount)||0}))}}else{salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))}}el('auth').classList.add('hidden');el('app').classList.remove('hidden');
  const username=user.user_metadata?.username||user.email?.split('@')[0]||'pengguna';
  el('welcome').textContent='Masuk sebagai '+username;
  await loadAll();
@@ -1028,16 +1043,43 @@ function renderGoals(){
  }).join(''):'Belum ada target tabungan.';
 }
 el('saveemergency').onclick=async()=>{
- const target=Number(el('emtarget').value),current=Number(el('emcurrent').value);
- if(!Number.isFinite(target)||!Number.isFinite(current)||target<0||current<0){msg('emmsg','Masukkan nominal yang valid.');return}
+ const target=Number(el('emtarget').value);
+ if(!Number.isFinite(target)||target<0){msg('emmsg','Target harus berupa nominal nol atau lebih.');return}
+ const current=Number(emergency?.current||0);
  const {error}=await db.from('emergency_fund').upsert({user_id:user.id,target,current,updated_at:new Date().toISOString()},{onConflict:'user_id'});
  if(error){msg('emmsg','Gagal menyimpan: '+error.message);return}
- emergency={target,current};msg('emmsg','Dana darurat berhasil disimpan.');renderEmergency();
+ emergency={...(emergency||{}),target,current};msg('emmsg','Target total berhasil disimpan.');renderEmergency();
 };
+el('addemdeposit').onclick=async()=>{
+ const amount=Number(el('emdepositinput').value);
+ if(!Number.isFinite(amount)||amount<=0){msg('emdepositmsg','Nominal setoran harus lebih dari Rp0.');return}
+ const target=Number(emergency?.target||0),current=Number(emergency?.current||0)+amount;
+ const {error}=await db.from('emergency_fund').upsert({user_id:user.id,target,current,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+ if(error){msg('emdepositmsg','Setoran gagal disimpan: '+error.message);return}
+ const key=monthKey(),prior=emergencyDepositTracking.month_key===key?Number(emergencyDepositTracking.monthly_deposited||0):0;
+ const tracking={month_key:key,monthly_deposited:prior+amount};
+ const {data,error:metaError}=await db.auth.updateUser({data:{emergency_deposit_tracking:tracking}});
+ emergency={...(emergency||{}),target,current};emergencyDepositTracking=tracking;
+ el('emdepositinput').value='';renderEmergency();
+ msg('emdepositmsg',metaError?'Setoran masuk ke total dana, tetapi riwayat setoran bulan ini gagal disinkronkan.':'Setoran berhasil ditambahkan.');
+ if(data?.user)user=data.user;
+};
+function emergencyMonthlyAllocation(){
+ const item=salaryPlan.items.find(x=>x.name.toLowerCase()==='dana darurat');
+ if(!item)return 0;
+ return Math.max(0,Number(salaryPlan.mode==='percentage'?salaryPlan.total*Number(item.amount||0)/100:item.amount||0));
+}
 function renderEmergency(){
- const target=Number(emergency?.target||0),current=Number(emergency?.current||0),pct=target>0?Math.min(100,current/target*100):0;
- el('emtarget').value=emergency?.target??'';el('emcurrent').value=emergency?.current??'';
- el('emview').innerHTML=emergency?`<strong>${money(current)} / ${money(target)}</strong><p>${pct.toFixed(1)}% tercapai</p><div style="height:10px;background:#263550;border-radius:20px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--green)"></div></div>`:'Belum ada data dana darurat.';
+ const target=Number(emergency?.target||0),current=Number(emergency?.current||0),monthly=emergencyMonthlyAllocation();
+ const key=monthKey(),deposited=emergencyDepositTracking.month_key===key?Number(emergencyDepositTracking.monthly_deposited||0):0;
+ const pct=target>0?Math.min(100,current/target*100):0,monthlyPct=monthly>0?Math.min(100,deposited/monthly*100):0;
+ el('emtarget').value=emergency?.target??'';
+ el('emtotal').textContent=money(current);el('emmonthly').textContent=money(monthly);el('emdeposited').textContent=money(deposited);
+ el('emdepositguide').textContent=monthly>0?'Jatah setoran bulan ini '+money(monthly)+'. Sisa alokasi bulan ini '+money(Math.max(0,monthly-deposited))+'. Setoran lebih dari alokasi tetap dicatat, tetapi akan ditandai melebihi jatah.':'Belum ada alokasi Dana darurat. Atur kategori Dana darurat di Alokasi Gaji terlebih dahulu.';
+ el('addemdeposit').disabled=monthly<=0;
+ const monthlyStatus=monthly>0?(deposited>=monthly?'Alokasi bulan ini tercapai.':'Tersisa '+money(monthly-deposited)+' dari jatah bulan ini.'):'Belum ada alokasi bulanan.';
+ const targetStatus=target>0?'<p>Target total: <strong>'+money(current)+' / '+money(target)+'</strong> · '+pct.toFixed(1)+'% tercapai</p><div class="goal-progress"><span style="width:'+pct+'%"></span></div>':'<p class="muted">Target total belum diatur. Kamu tetap bisa mencatat setoran.</p>';
+ el('emview').innerHTML='<div class="muted">Progress setoran bulan ini</div><strong>'+money(deposited)+' / '+money(monthly)+'</strong><p>'+monthlyPct.toFixed(1)+'% dari alokasi bulanan</p><div class="goal-progress"><span style="width:'+monthlyPct+'%"></span></div><p>'+monthlyStatus+'</p>'+targetStatus+'<p class="muted">Total dana terkumpul tersimpan terpisah dari setoran bulan ini.</p>';
 }
 db.auth.getSession().then(({data})=>{if(data.session)boot(data.session)});
 db.auth.onAuthStateChange((_event,session)=>{if(session&&!user)boot(session)});
