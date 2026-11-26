@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "Niell Finance",
+  "short_name": "Niell Finance",
+  "description": "Plan, track, and grow your finances.",
+  "lang": "id-ID",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#080f20",
+  "theme_color": "#080f20",
+  "icons": [
+    {"src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
+    {"src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable"}
+  ]
+}
