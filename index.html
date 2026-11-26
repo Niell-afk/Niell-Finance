@@ -291,6 +291,39 @@ body > #dialogbackdrop .dialog-box{
  .page .formgrid{gap:12px}
 }
 
+
+/* Stronger neon contrast across every nested card and content block */
+.page .card{
+ border:1px solid rgba(76,164,255,.62)!important;
+ background:linear-gradient(145deg,rgba(20,43,75,.98),rgba(10,23,43,.99))!important;
+ box-shadow:0 0 0 1px rgba(62,145,255,.15),0 0 18px rgba(43,135,255,.14),inset 0 1px 0 rgba(154,205,255,.08)!important;
+}
+.page .card .card{
+ border-color:rgba(72,190,255,.48)!important;
+ background:linear-gradient(135deg,rgba(24,51,86,.96),rgba(15,32,57,.98))!important;
+ box-shadow:0 0 14px rgba(45,160,255,.1),inset 0 1px 0 rgba(155,216,255,.07)!important;
+}
+.page .card h3,.page .card h4{
+ border-bottom:1px solid rgba(73,190,255,.48);
+ padding-bottom:13px;
+ text-shadow:0 0 12px rgba(62,165,255,.35);
+}
+.page .card .grid>.card,
+.page .grid>.card,
+.page .alloc-layout>.card{
+ border:1px solid rgba(73,174,255,.56)!important;
+ box-shadow:0 0 0 1px rgba(70,145,255,.12),0 0 16px rgba(44,139,255,.13),inset 0 1px 0 rgba(160,211,255,.07)!important;
+}
+.page .card hr,.page .card .divider{
+ border:0!important;border-top:1px solid rgba(74,185,255,.5)!important;
+ box-shadow:0 -1px 8px rgba(55,160,255,.16);
+}
+.page .card .notice,.page .card .pill{
+ border:1px solid rgba(79,177,255,.46)!important;
+ background:rgba(49,124,210,.14)!important;
+}
+.page .card .table td{border-bottom:1px solid rgba(81,158,235,.3)!important}
+
 </style>
 </head>
 <body>
