@@ -411,7 +411,7 @@ body > #dialogbackdrop .dialog-box{
 <div class="grid" style="margin-bottom:14px"><div class="card"><div class="muted">Total tabungan masa depan</div><div class="metric pos" id="futuretotal">Rp0</div></div><div class="card"><div class="muted">Setoran bulan ini</div><div class="metric" id="futurecurrent">Rp0</div></div><div class="card"><div class="muted">Target bulan ini</div><div class="metric" id="futuretarget">Rp350.000</div></div></div><div class="card"><h3>Alokasi tabungan bulanan</h3><p class="muted" id="allocationmonth">Bulan ini</p><div class="formgrid">
 <div><label>Target alokasi bulan ini (Rp)</label><input id="allocationtarget" type="number" min="0" value="350000"></div>
 <div><label>Sudah disetor bulan ini (Rp)</label><input id="allocationsaved" type="number" min="0" value="0"></div>
-</div><p><button id="saveallocation">Simpan alokasi</button></p><div id="allocationprogress" class="muted">Belum ada alokasi bulan ini.</div><div id="allocationmsg" class="muted"></div></div><div class="section card"><h3>Riwayat alokasi bulanan</h3><div class="tablewrap" id="allocationhistory">Belum ada riwayat.</div></div>
+</div><p><button id="saveallocation">Simpan alokasi</button></p><div id="allocationprogress" class="muted">Belum ada alokasi bulan ini.</div><div id="allocationmsg" class="muted"></div></div><div class="section card"><h3>Gunakan Tabungan Masa Depan</h3><p class="muted">Catat uang yang diambil dari tabungan. Saldo akan berkurang dan riwayat penggunaan tersimpan.</p><div class="formgrid"><div><label for="futureuseamount">Nominal digunakan (Rp)</label><input id="futureuseamount" type="number" min="1" step="1" placeholder="500000"></div><div><label for="futureusedate">Tanggal</label><input id="futureusedate" type="date"></div><div class="wide"><label for="futureusenote">Keperluan</label><input id="futureusenote" maxlength="120" placeholder="Contoh: Beli komponen PC"></div></div><p><button id="usefuturesavings">Catat penggunaan</button></p><div id="futureusemsg" class="muted"></div></div><div class="section card"><h3>Riwayat penggunaan tabungan</h3><div id="futureusehistory" class="tablewrap">Belum ada penggunaan.</div></div><div class="section card"><h3>Riwayat alokasi bulanan</h3><div class="tablewrap" id="allocationhistory">Belum ada riwayat.</div></div>
 </section>
 <section id="investments" class="page hidden"><div class="card"><h3>Tambah investasi</h3><div class="formgrid"><div><label>Nama aset</label><input id="invname" placeholder="Contoh: Reksa dana / Emas"></div><div><label>Modal awal (Rp)</label><input id="invinitial" type="number" min="1" placeholder="500000"></div><div><label>Nilai sekarang (Rp)</label><input id="invcurrent" type="number" min="0" placeholder="500000"></div></div><p><button id="addinvestment">Tambah investasi</button></p><div id="invmsg" class="muted"></div></div><div class="section card"><h3>Portofolio investasi</h3><div id="investmentlist" class="muted">Memuat...</div></div></section>
 <section id="emergency" class="page hidden">
@@ -512,7 +512,7 @@ const monthKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMo
 const monthLabel=()=>new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date());
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const el=id=>document.getElementById(id);
-let debtRecords=[], walletTransfers=[];
+let debtRecords=[], walletTransfers=[], futureSavingsActivity=[];
 let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=null, emergencyDepositTracking={month_key:'',monthly_deposited:0}, monthlyAllocation=null, monthlyAllocations=[], categoryBudgets=[], budgetAlertHistory=[], budgetAlertStates={}, budgetAlertSaving=false, recurringTransactions=[], authMode='login', booting=false;
 const allocationDefaults=[{name:'Kebutuhan',amount:350000},{name:'Tabungan',amount:350000},{name:'Tagihan',amount:250000},{name:'Dana darurat',amount:200000},{name:'Keluarga',amount:200000},{name:'Hiburan',amount:150000}];
 let salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))};
@@ -585,10 +585,14 @@ async function loadAll(){
 ]);
  if(w.error||t.error||g.error||i.error||e.error||ma.error){msg('welcome','Gagal memuat data: '+(w.error?.message||t.error?.message||g.error?.message||i.error?.message||e.error?.message||ma.error?.message));return}
  wallets=w.data||[];transactions=t.data||[];goals=g.data||[];investments=i.data||[];emergency=e.data||null;monthlyAllocations=ma.data||[];monthlyAllocation=monthlyAllocations.find(x=>x.month_key===monthKey())||null;
-  const transferResult=await db.from('wallet_transfers').select('*').order('transfer_date',{ascending:false}).order('created_at',{ascending:false});
-  walletTransfers=transferResult.data||[];
+  const [transferResult,futureActivityResult]=await Promise.all([
+   db.from('wallet_transfers').select('*').order('transfer_date',{ascending:false}).order('created_at',{ascending:false}),
+   db.from('future_savings_activity').select('*').order('activity_date',{ascending:false}).order('created_at',{ascending:false})
+  ]);
+  walletTransfers=transferResult.data||[];futureSavingsActivity=futureActivityResult.data||[];
   render();
   if(transferResult.error)msg('transfermsg','Aktifkan fitur transfer dulu dengan menjalankan SQL migration di folder supabase/migrations pada GitHub.');
+  if(futureActivityResult.error)msg('futureusemsg','Aktifkan riwayat penggunaan dengan menjalankan SQL migration future savings di Supabase.');
 }
 function exportTransactions(){
  const q=(el('txsearch')?.value||'').trim().toLowerCase(),kind=el('txfiltertype')?.value||'all',filterMonth=el('txfiltermonth')?.value||'',sort=el('txsort')?.value||'newest';
@@ -875,7 +879,7 @@ async function boot(session){
 }
 
 el('backupdata').onclick=()=>{
- const backup={app:'Niell Finance',version:1,created_at:new Date().toISOString(),data:{wallets,transactions,goals,investments,emergency,monthlyAllocations,metadata:{salary_allocation:user.user_metadata?.salary_allocation||null,category_budgets:categoryBudgets,budget_alert_history:budgetAlertHistory,budget_alert_states:budgetAlertStates,recurring_transactions:recurringTransactions}}};
+ const backup={app:'Niell Finance',version:1,created_at:new Date().toISOString(),data:{wallets,transactions,goals,investments,emergency,monthlyAllocations,futureSavingsActivity,metadata:{salary_allocation:user.user_metadata?.salary_allocation||null,category_budgets:categoryBudgets,budget_alert_history:budgetAlertHistory,budget_alert_states:budgetAlertStates,recurring_transactions:recurringTransactions}}};
  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download='niell-finance-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
  msg('backupmsg','Backup berhasil dibuat. Simpan file JSON di tempat aman.');
@@ -892,6 +896,7 @@ el('restorefile').onchange=async ev=>{
   await upsertRows('savings_goals',d.goals);
   await upsertRows('investments',d.investments);
   await upsertRows('monthly_savings_allocations',d.monthlyAllocations,'user_id,month_key');
+   if(Array.isArray(d.futureSavingsActivity))await upsertRows('future_savings_activity',d.futureSavingsActivity);
   if(d.emergency){const {error}=await db.from('emergency_fund').upsert({...d.emergency,user_id:user.id},{onConflict:'user_id'});if(error)throw new Error('Dana darurat: '+error.message)}
   const m=d.metadata||{},metadata={...user.user_metadata};
   for(const key of ['salary_allocation','category_budgets','budget_alert_history','budget_alert_states','recurring_transactions'])if(m[key]!==undefined)metadata[key]=m[key];
@@ -952,7 +957,7 @@ window.removeDebtRecord=async id=>{
  debtRecords=debtRecords.filter(x=>x.id!==id);await saveDebtRecords('Catatan berhasil dihapus.');
 };
 el('debt-filter').onchange=renderDebts;
-el('date').value=new Date().toISOString().slice(0,10);el('debt-date').value=new Date().toISOString().slice(0,10);el('transferdate').value=new Date().toISOString().slice(0,10);
+el('date').value=new Date().toISOString().slice(0,10);el('debt-date').value=new Date().toISOString().slice(0,10);el('transferdate').value=new Date().toISOString().slice(0,10);el('futureusedate').value=new Date().toISOString().slice(0,10);
 fillTransactionCategories(el('category'),el('type').value);
 fillTransactionCategories(el('reccategory'),el('rectype').value);
 el('type').addEventListener('change',()=>fillTransactionCategories(el('category'),el('type').value));
@@ -1129,8 +1134,24 @@ function renderMonthlyAllocation(){
  el('futuretarget').textContent=money(target);
  el('allocationtarget').value=target;el('allocationsaved').value=saved;
  el('allocationprogress').innerHTML=monthlyAllocation?'<strong>'+money(saved)+' / '+money(target)+'</strong><p>'+pct.toFixed(1)+'% tercapai</p><div style="height:10px;background:#263550;border-radius:20px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--green)"></div></div><p class="muted">Sisa alokasi: '+money(Math.max(0,target-saved))+'</p>':'Belum ada data alokasi bulan ini. Atur target dan simpan.';
- el('allocationhistory').innerHTML=monthlyAllocations.length?'<table class="table"><thead><tr><th>Bulan</th><th>Target</th><th>Setoran</th></tr></thead><tbody>'+monthlyAllocations.map(row=>'<tr><td>'+new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date(row.month_key+'T00:00:00'))+'</td><td>'+money(row.target_amount)+'</td><td class="pos">'+money(row.saved_amount)+'</td></tr>').join('')+'</tbody></table>':'Belum ada riwayat setoran.';
+ el('futureusehistory').innerHTML=futureSavingsActivity.length?'<table class="table"><thead><tr><th>Tanggal</th><th>Keperluan</th><th>Nominal</th></tr></thead><tbody>'+futureSavingsActivity.map(x=>'<tr><td>'+esc(x.activity_date||'')+'</td><td>'+esc(x.note||'Penggunaan tabungan')+'</td><td class="neg">-'+money(x.amount)+'</td></tr>').join('')+'</tbody></table>':'Belum ada penggunaan tabungan.';
+  el('allocationhistory').innerHTML=monthlyAllocations.length?'<table class="table"><thead><tr><th>Bulan</th><th>Target</th><th>Setoran</th></tr></thead><tbody>'+monthlyAllocations.map(row=>'<tr><td>'+new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date(row.month_key+'T00:00:00'))+'</td><td>'+money(row.target_amount)+'</td><td class="pos">'+money(row.saved_amount)+'</td></tr>').join('')+'</tbody></table>':'Belum ada riwayat setoran.';
 }
+el('usefuturesavings').onclick=async()=>{
+ const amount=Number(el('futureuseamount').value),date=el('futureusedate').value,note=el('futureusenote').value.trim();
+ const balance=monthlyAllocations.reduce((sum,row)=>sum+Number(row.saved_amount||0),0);
+ if(!Number.isFinite(amount)||amount<=0||!date){msg('futureusemsg','Isi nominal dan tanggal dengan benar.');return}
+ if(amount>balance){msg('futureusemsg','Saldo Tabungan Masa Depan tidak mencukupi. Saldo saat ini '+money(balance)+'.');return}
+ const btn=el('usefuturesavings');btn.disabled=true;
+ try{
+  const {error}=await db.rpc('use_future_savings',{p_amount:amount,p_date:date,p_note:note||null});
+  if(error)throw error;
+  el('futureuseamount').value='';el('futureusenote').value='';
+  msg('futureusemsg','Penggunaan berhasil dicatat. Saldo tabungan sudah dikurangi.');
+  await loadAll();
+ }catch(error){msg('futureusemsg','Gagal mencatat penggunaan: '+(error.message||'Terjadi kesalahan'))}
+ finally{btn.disabled=false}
+};
 el('saveallocation').onclick=async()=>{
  const target_amount=Number(el('allocationtarget').value),saved_amount=Number(el('allocationsaved').value);
  if(!Number.isFinite(target_amount)||!Number.isFinite(saved_amount)||target_amount<0||saved_amount<0){msg('allocationmsg','Nominal tidak valid.');return}
