@@ -140,7 +140,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div><label>Kategori</label><select id="category"><option>Makanan & minuman</option><option>Transportasi</option><option>Belanja</option><option>Tagihan</option><option>Hiburan & game</option><option>Kesehatan</option><option>Lainnya</option></select></div>
 <div><label>Tanggal</label><input id="date" type="date"></div>
 </div><p><button id="addtx">Simpan transaksi</button></p><div id="txmsg" class="muted"></div></div>
-<div class="section card"><h3>Riwayat transaksi</h3><div class="txfilters"><input id="txsearch" type="search" placeholder="Cari nama atau kategori transaksi..."><select id="txfiltertype"><option value="all">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select><input id="txfiltermonth" type="month" aria-label="Filter bulan"><select id="txsort" aria-label="Urutkan transaksi"><option value="newest">Terbaru</option><option value="oldest">Terlama</option><option value="highest">Nominal terbesar</option><option value="lowest">Nominal terkecil</option></select><button class="ghost" id="txreset" type="button">Reset filter</button></div><div class="muted" id="txcount" style="margin:4px 0 8px"></div><div id="txtotals" class="tx-totals"></div><div class="tablewrap" id="txlist"></div></div>
+<div class="section card"><h3>Riwayat transaksi</h3><div class="txfilters"><input id="txsearch" type="search" placeholder="Cari nama atau kategori transaksi..."><select id="txfiltertype"><option value="all">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select><input id="txfiltermonth" type="month" aria-label="Filter bulan"><select id="txsort" aria-label="Urutkan transaksi"><option value="newest">Terbaru</option><option value="oldest">Terlama</option><option value="highest">Nominal terbesar</option><option value="lowest">Nominal terkecil</option></select><button class="ghost" id="txreset" type="button">Reset filter</button></div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0"><div class="muted" id="txcount"></div><button class="ghost" id="exporttx" type="button">↓ Ekspor CSV</button></div><div id="txtotals" class="tx-totals"></div><div class="tablewrap" id="txlist"></div></div>
 </section>
 <section id="wallets" class="page hidden">
 <div class="card"><h3>Tambah dompet</h3><div class="row"><div><label>Nama dompet</label><input id="walletname" placeholder="Cash / BCA / DANA"></div><div><label>Saldo awal (Rp)</label><input id="walletbalance" type="number" min="0" value="0"></div><div><button id="addwallet">Tambah dompet</button></div></div></div>
@@ -248,6 +248,18 @@ async function loadAll(){
  if(w.error||t.error||g.error||i.error||e.error||ma.error){msg('welcome','Gagal memuat data: '+(w.error?.message||t.error?.message||g.error?.message||i.error?.message||e.error?.message||ma.error?.message));return}
  wallets=w.data||[];transactions=t.data||[];goals=g.data||[];investments=i.data||[];emergency=e.data||null;monthlyAllocations=ma.data||[];monthlyAllocation=monthlyAllocations.find(x=>x.month_key===monthKey())||null;render();
 }
+function exportTransactions(){
+ const q=(el('txsearch')?.value||'').trim().toLowerCase(),kind=el('txfiltertype')?.value||'all',filterMonth=el('txfiltermonth')?.value||'',sort=el('txsort')?.value||'newest';
+ const rows=transactions.filter(t=>(kind==='all'||t.type===kind)&&(!filterMonth||(t.date||'').startsWith(filterMonth))&&(!q||[t.name,t.category,t.date].some(v=>String(v||'').toLowerCase().includes(q))));
+ rows.sort((a,b)=>sort==='oldest'?(a.date||'').localeCompare(b.date||''):sort==='highest'?Number(b.amount||0)-Number(a.amount||0):sort==='lowest'?Number(a.amount||0)-Number(b.amount||0):(b.date||'').localeCompare(a.date||''));
+ if(!rows.length){msg('txmsg','Tidak ada transaksi untuk diekspor.');return}
+ const safe=value=>{let v=String(value??'');if(['=','+','-','@','\\t','\\r'].some(c=>v.startsWith(c)))v="'"+v;return '"'+v.replace(/"/g,'""')+'"'};
+ const lines=[['Tanggal','Nama transaksi','Kategori','Jenis','Nominal (Rp)','Dompet'].map(safe).join(',')];
+ rows.forEach(t=>{const wallet=wallets.find(w=>w.id===t.source_wallet_id);lines.push([t.date,t.name,t.category,t.type==='income'?'Pemasukan':'Pengeluaran',Number(t.amount||0),wallet?.name||''].map(safe).join(','))});
+ const blob=new Blob(['\\uFEFF'+lines.join('\\r\\n')],{type:'text/csv;charset=utf-8;'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='niell-finance-transaksi-'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+ msg('txmsg',rows.length+' transaksi berhasil diekspor.');
+}
 function render(){
  el('wallet').innerHTML=wallets.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');
  el('walletlist').innerHTML=wallets.length?wallets.map(w=>`<div class="card" style="margin:12px 0"><strong>${esc(w.name)}</strong><p>${money(w.balance)}</p><button onclick="editWallet('${w.id}')">Ubah nama</button> <button class="ghost" onclick="deleteWallet('${w.id}')">Hapus</button></div>`).join(''):'Belum ada dompet.';
@@ -321,6 +333,7 @@ document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{document.quer
 el('date').value=new Date().toISOString().slice(0,10);
 el('addwallet').onclick=async()=>{const name=el('walletname').value.trim(),balance=Number(el('walletbalance').value||0);if(!name||balance<0)return;const {error}=await db.from('wallets').insert({user_id:user.id,name,balance});if(error){alert(error.message);return}el('walletname').value='';el('walletbalance').value='0';await loadAll()};
 ['txsearch','txfiltertype','txfiltermonth','txsort'].forEach(id=>el(id).addEventListener('input',()=>render()));
+el('exporttx').onclick=exportTransactions;
 el('txreset').onclick=()=>{el('txsearch').value='';el('txfiltertype').value='all';el('txfiltermonth').value='';el('txsort').value='newest';render()};
 el('addtx').onclick=async()=>{
  const type=el('type').value,wallet_id=el('wallet').value,name=el('name').value.trim(),amount=Number(el('amount').value),category=el('category').value,transaction_date=el('date').value;
