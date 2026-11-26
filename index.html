@@ -494,11 +494,18 @@ async function nfTransactionForm(tx){
    el('dialogok').onclick=null;el('dialogcancel').onclick=null;
    resolve(value);
   };
-  el('dialogok').onclick=()=>finish({
-   type:el('edit-tx-type').value,walletId:el('edit-tx-wallet').value,
-   name:el('edit-tx-name').value.trim(),amount:Number(el('edit-tx-amount').value),
-   date:el('edit-tx-date').value,category:el('edit-tx-category').value.trim()
-  });
+  el('dialogok').onclick=()=>{
+   const values={
+    type:el('edit-tx-type').value,walletId:el('edit-tx-wallet').value,
+    name:el('edit-tx-name').value.trim(),amount:Number(el('edit-tx-amount').value),
+    date:el('edit-tx-date').value,category:el('edit-tx-category').value.trim()
+   };
+   if(!values.name){el('dialogmessage').textContent='Nama transaksi wajib diisi.';el('edit-tx-name').focus();return}
+   if(!Number.isFinite(values.amount)||values.amount<=0){el('dialogmessage').textContent='Nominal harus lebih dari nol.';el('edit-tx-amount').focus();return}
+   if(!values.date){el('dialogmessage').textContent='Tanggal transaksi wajib diisi.';el('edit-tx-date').focus();return}
+   if(!values.category){el('dialogmessage').textContent='Kategori wajib diisi.';el('edit-tx-category').focus();return}
+   finish(values);
+  };
   el('dialogcancel').onclick=()=>finish(null);
  });
 }
