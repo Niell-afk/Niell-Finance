@@ -185,6 +185,19 @@ body{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;line-he
 .cashflow-tooltip b{margin-left:auto;font-variant-numeric:tabular-nums}
 .cashflow-tip-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;display:inline-block}
 .cashflow-tip-dot.income{background:#4f8cff}.cashflow-tip-dot.expense{background:#8b5cf6}
+
+/* Fix dialog placement: keep confirmation and alerts centered in viewport */
+body > #dialogbackdrop.dialog-backdrop{
+ position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;
+ min-height:100vh!important;margin:0!important;z-index:99999!important;
+ display:none;align-items:center!important;justify-content:center!important;padding:18px!important;
+}
+body > #dialogbackdrop.dialog-backdrop.open{display:flex!important}
+body > #dialogbackdrop .dialog-box{
+ position:relative!important;inset:auto!important;margin:auto!important;
+ width:min(100%,440px)!important;max-height:calc(100vh - 36px);overflow-y:auto;
+}
+
 </style>
 </head>
 <body>
