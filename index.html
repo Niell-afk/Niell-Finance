@@ -475,7 +475,7 @@ el('changepassword').onclick=async()=>{
 };
 
 el('settingslogout').onclick=()=>el('logout').click();
-function goPage(page){const btn=document.querySelector('[data-page="'+page+'"]');if(!btn)return;document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===btn));document.querySelectorAll('.page').forEach(x=>x.classList.toggle('hidden',x.id!==page));el('pagetitle').textContent=btn.textContent;window.scrollTo({top:0,behavior:'smooth'})}
+function goPage(page){const btn=document.querySelector('[data-page="'+page+'"]');if(!btn)return;document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===btn));document.querySelectorAll('.page').forEach(x=>x.classList.toggle('hidden',x.id!==page));el('pagetitle').textContent=btn.textContent;if(page==='calendar')renderCalendar();window.scrollTo({top:0,behavior:'smooth'})}
 function renderCashflow(currentMonthTransactions){
  const labels=[],incomeData=[],expenseData=[];const now=new Date();
  for(let offset=5;offset>=0;offset--){const d=new Date(now.getFullYear(),now.getMonth()-offset,1),key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');labels.push(new Intl.DateTimeFormat('id-ID',{month:'short'}).format(d));const rows=transactions.filter(t=>String(t.date||'').slice(0,7)===key);incomeData.push(rows.filter(t=>t.type==='income').reduce((a,t)=>a+Number(t.amount||0),0));expenseData.push(rows.filter(t=>t.type==='expense').reduce((a,t)=>a+Number(t.amount||0),0))}
