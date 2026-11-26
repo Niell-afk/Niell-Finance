@@ -1,0 +1,9 @@
+{
+  "name": "niell-finance-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android wrapper for Niell Finance",
+  "scripts": {
+    "android:sync": "cap sync android"
+  }
+}
