@@ -160,6 +160,20 @@ body{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;line-he
 @media(min-width:681px){.side{width:248px;min-width:248px}.nav button{min-height:46px}.brand{margin-bottom:38px}}
 @media(max-width:680px){.side{display:block;padding:10px 12px}.brand{margin:0 3px 10px;min-height:40px}.brand-mark{width:36px;height:36px;flex-basis:36px;border-radius:11px}.brand-mark svg{width:30px;height:30px}.brand-copy strong{font-size:14px}.brand-copy small{font-size:9px}.nav{display:flex;align-items:stretch;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding:2px 1px 7px}.nav button{display:flex;flex:0 0 auto;align-items:center;justify-content:flex-start;gap:7px;width:auto;min-height:39px;padding:8px 10px;font-size:12px;white-space:nowrap}.nav-icon{width:18px;height:18px;font-size:15px;flex:0 0 18px}.nav-label{white-space:nowrap}.main{padding:17px 13px}.dash-meta{align-items:center}.dash-install{min-height:34px;padding:7px 9px;font-size:11px}}
 @media(max-width:390px){.dash-meta{flex-wrap:wrap;justify-content:flex-start}.dash-sync{margin-left:auto}}
+
+/* Dashboard balance cards: clean colored line charts */
+.dash-spark{right:12px;bottom:9px;width:116px;height:48px;opacity:.92;transform:none;letter-spacing:normal;font-size:0;pointer-events:none}
+.dash-spark svg{display:block;width:100%;height:100%;overflow:visible}
+.dash-spark path{filter:drop-shadow(0 0 3px currentColor)}
+.dash-stat.balance .dash-spark{color:#4f91ff}
+.dash-stat.income .dash-spark{color:#35d6a0}
+.dash-stat.expense .dash-spark{color:#ff718c}
+.dash-stat>div:nth-child(2){position:relative;z-index:2}
+.dash-card-head{padding-top:7px;margin-bottom:18px;min-height:34px}
+.card>h3,.section.card>h3,.page>.card>h3{margin-top:7px;margin-bottom:17px;line-height:1.35}
+.page>h2,.page>.page-head,.page>.section-title{margin-top:8px;margin-bottom:18px}
+.page section>h3{margin-top:8px;margin-bottom:16px}
+@media(max-width:680px){.dash-spark{width:82px;height:38px;right:8px;bottom:7px}.dash-stat{padding:15px 13px;gap:11px}.dash-stat-icon{width:43px;height:43px;flex-basis:43px}}
 </style>
 </head>
 <body>
@@ -185,9 +199,9 @@ body{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;line-he
 <div class="dash-welcome"><div><h1>Halo, <span id="dashboardusername">Niel</span>! 👋</h1><p>Kelola keuanganmu dengan bijak, capai tujuan finansialmu.</p></div><div class="dash-meta"><span class="dash-month" id="dashboardmonth">▣ Bulan ini</span><button class="dash-install" id="installapp" type="button" hidden>＋ Pasang aplikasi</button><span class="dash-sync"><i></i> Data tersinkron</span></div></div>
 <div id="dashboardbudgetalerts"></div>
 <div class="dash-stats">
- <div class="dash-stat balance"><div class="dash-stat-icon">▣</div><div><span>Saldo Total</span><strong id="total">Rp0</strong><small id="dashbalancehint">Saldo seluruh dompet</small></div><div class="dash-spark spark-blue">⌁⌁⌁</div></div>
- <div class="dash-stat income"><div class="dash-stat-icon">↗</div><div><span>Total Pemasukan</span><strong id="income">Rp0</strong><small>Bulan ini</small></div><div class="dash-spark spark-green">⌁⌁⌁</div></div>
- <div class="dash-stat expense"><div class="dash-stat-icon">−</div><div><span>Total Pengeluaran</span><strong id="expense">Rp0</strong><small>Bulan ini</small></div><div class="dash-spark spark-red">⌁⌁⌁</div></div>
+ <div class="dash-stat balance"><div class="dash-stat-icon">▣</div><div><span>Saldo Total</span><strong id="total">Rp0</strong><small id="dashbalancehint">Saldo seluruh dompet</small></div><div class="dash-spark spark-blue" aria-hidden="true"><svg viewBox="0 0 120 48" preserveAspectRatio="none"><path d="M2 39 L18 34 L29 38 L43 25 L55 31 L69 14 L81 22 L96 8 L118 3" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+ <div class="dash-stat income"><div class="dash-stat-icon">↗</div><div><span>Total Pemasukan</span><strong id="income">Rp0</strong><small>Bulan ini</small></div><div class="dash-spark spark-green" aria-hidden="true"><svg viewBox="0 0 120 48" preserveAspectRatio="none"><path d="M2 40 L16 35 L29 38 L43 26 L56 29 L70 16 L83 20 L98 7 L118 4" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+ <div class="dash-stat expense"><div class="dash-stat-icon">−</div><div><span>Total Pengeluaran</span><strong id="expense">Rp0</strong><small>Bulan ini</small></div><div class="dash-spark spark-red" aria-hidden="true"><svg viewBox="0 0 120 48" preserveAspectRatio="none"><path d="M2 40 L17 37 L29 29 L42 33 L56 22 L70 26 L84 14 L99 18 L118 5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
 </div>
 <div class="dash-main-grid">
  <div class="card dash-chart-card"><div class="dash-card-head"><h3>▥ &nbsp;Ringkasan Keuangan</h3><span class="pill">6 bulan terakhir</span></div><div id="cashflowchart"><div class="muted">Belum ada data transaksi.</div></div><div class="chart-legend"><span><i class="chart-key" style="background:#4388ff"></i>Pemasukan</span><span><i class="chart-key" style="background:#8b5cf6"></i>Pengeluaran</span></div></div>
