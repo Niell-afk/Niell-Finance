@@ -183,7 +183,7 @@ async function deleteWallet(id){
 }
 async function boot(session){
  if(booting)return; booting=true;
- user=session.user;el('auth').classList.add('hidden');el('app').classList.remove('hidden');
+ user=session.user;const savedPlan=user.user_metadata?.salary_allocation;if(savedPlan&&Array.isArray(savedPlan.items)&&savedPlan.items.length===allocationDefaults.length){salaryPlan={total:Number(savedPlan.total)||1500000,mode:savedPlan.mode==='percentage'?'percentage':'fixed',items:savedPlan.items.map((x,i)=>({name:allocationDefaults[i].name,amount:Number(x.amount)||0}))}}else{salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))}}el('auth').classList.add('hidden');el('app').classList.remove('hidden');
  const username=user.user_metadata?.username||user.email?.split('@')[0]||'pengguna';
  el('welcome').textContent='Masuk sebagai '+username;
  await loadAll();
