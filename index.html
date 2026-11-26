@@ -375,7 +375,7 @@ function render(){
  el('dashboardmonth').textContent=new Intl.DateTimeFormat('id-ID',{month:'short',year:'numeric'}).format(new Date());
  const uname=user?.user_metadata?.username||user?.email?.split('@')[0]||'Niel';el('dashboardusername').textContent=uname;
  renderDashboardTargets();
- renderGoals();renderInvestments();renderEmergency();renderMonthlyAllocation();renderSalaryAllocation();renderCashflow(mt);renderDashboardGoal();renderSpendingBreakdown(mt);renderStatistics();renderSettings();
+ renderGoals();renderInvestments();renderEmergency();renderMonthlyAllocation();renderSalaryAllocation();renderCashflow(mt);renderSpendingBreakdown(mt);renderStatistics();renderSettings();
 }
 
 
