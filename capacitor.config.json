@@ -1,0 +1,16 @@
+{
+  "appId": "com.niellfinance.app",
+  "appName": "Niell Finance",
+  "webDir": "www",
+  "server": {
+    "url": "https://niell-afk.github.io/Niell-Finance/",
+    "cleartext": false,
+    "allowNavigation": [
+      "niell-afk.github.io",
+      "supabase.co"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
