@@ -391,9 +391,9 @@ body > #dialogbackdrop .dialog-box{
 <div><label>Dompet</label><select id="wallet"></select></div>
 <div><label>Nama transaksi</label><input id="name" placeholder="Contoh: makan siang"></div>
 <div><label>Nominal (Rp)</label><input id="amount" type="number" min="1" placeholder="50000"></div>
-<div><label>Kategori</label><select id="category"><option>Makanan & minuman</option><option>Transportasi</option><option>Belanja</option><option>Tagihan</option><option>Hiburan & game</option><option>Kesehatan</option><option>Lainnya</option></select></div>
+<div><label>Kategori</label><select id="category"></select></div>
 <div><label>Tanggal</label><input id="date" type="date"></div>
-</div><p><button id="addtx">Simpan transaksi</button></p><div id="txmsg" class="muted"></div></div><div class="section card"><h3>Transaksi rutin bulanan</h3><p class="muted">Simpan tagihan atau pemasukan berulang. Transaksi dicatat saat tombol ditekan, bukan otomatis.</p><div class="formgrid"><div><label>Nama</label><input id="recname" placeholder="Contoh: WiFi"></div><div><label>Nominal (Rp)</label><input id="recamount" type="number" min="1"></div><div><label>Jenis</label><select id="rectype"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select></div><div><label>Dompet</label><select id="recwallet"></select></div><div><label>Kategori</label><select id="reccategory"><option>Tagihan</option><option>Makanan & minuman</option><option>Transportasi</option><option>Belanja</option><option>Hiburan & game</option><option>Kesehatan</option><option>Lainnya</option></select></div></div><button id="saverecurring" style="margin-top:12px">Simpan transaksi rutin</button><div id="recurringmsg" class="muted" style="margin-top:8px"></div><div id="recurringlist" style="margin-top:12px"></div></div><div class="section card"><h3>Riwayat transaksi</h3><div class="txfilters"><input id="txsearch" type="search" placeholder="Cari nama atau kategori transaksi..."><select id="txfiltertype"><option value="all">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select><input id="txfiltermonth" type="month" aria-label="Filter bulan"><select id="txsort" aria-label="Urutkan transaksi"><option value="newest">Terbaru</option><option value="oldest">Terlama</option><option value="highest">Nominal terbesar</option><option value="lowest">Nominal terkecil</option></select><button class="ghost" id="txreset" type="button">Reset filter</button></div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0"><div class="muted" id="txcount"></div><button class="ghost" id="exporttx" type="button">↓ Ekspor CSV</button></div><div id="txtotals" class="tx-totals"></div><div class="tablewrap" id="txlist"></div></div>
+</div><p><button id="addtx">Simpan transaksi</button></p><div id="txmsg" class="muted"></div></div><div class="section card"><h3>Transaksi rutin bulanan</h3><p class="muted">Simpan tagihan atau pemasukan berulang. Transaksi dicatat saat tombol ditekan, bukan otomatis.</p><div class="formgrid"><div><label>Nama</label><input id="recname" placeholder="Contoh: WiFi"></div><div><label>Nominal (Rp)</label><input id="recamount" type="number" min="1"></div><div><label>Jenis</label><select id="rectype"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select></div><div><label>Dompet</label><select id="recwallet"></select></div><div><label>Kategori</label><select id="reccategory"></select></div></div><button id="saverecurring" style="margin-top:12px">Simpan transaksi rutin</button><div id="recurringmsg" class="muted" style="margin-top:8px"></div><div id="recurringlist" style="margin-top:12px"></div></div><div class="section card"><h3>Riwayat transaksi</h3><div class="txfilters"><input id="txsearch" type="search" placeholder="Cari nama atau kategori transaksi..."><select id="txfiltertype"><option value="all">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select><input id="txfiltermonth" type="month" aria-label="Filter bulan"><select id="txsort" aria-label="Urutkan transaksi"><option value="newest">Terbaru</option><option value="oldest">Terlama</option><option value="highest">Nominal terbesar</option><option value="lowest">Nominal terkecil</option></select><button class="ghost" id="txreset" type="button">Reset filter</button></div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0"><div class="muted" id="txcount"></div><button class="ghost" id="exporttx" type="button">↓ Ekspor CSV</button></div><div id="txtotals" class="tx-totals"></div><div class="tablewrap" id="txlist"></div></div>
 </section>
 <section id="wallets" class="page hidden">
 <div class="card"><h3>Tambah dompet</h3><div class="row"><div><label>Nama dompet</label><input id="walletname" placeholder="Cash / BCA / DANA"></div><div><label>Saldo awal (Rp)</label><input id="walletbalance" type="number" min="0" value="0"></div><div><button id="addwallet">Tambah dompet</button></div></div></div>
@@ -517,6 +517,14 @@ let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=
 const allocationDefaults=[{name:'Kebutuhan',amount:350000},{name:'Tabungan',amount:350000},{name:'Tagihan',amount:250000},{name:'Dana darurat',amount:200000},{name:'Keluarga',amount:200000},{name:'Hiburan',amount:150000}];
 let salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))};
 const allocColors=['#4f8cff','#35c995','#a78bfa','#f5b84b','#ff7185','#36c6d8'];
+const transactionCategories={income:['Gaji','Bisnis','Komisi','Bonus','Hadiah','Lainnya'],expense:['Makanan & minuman','Transportasi','Belanja','Tagihan','Hiburan & game','Kesehatan','Keluarga','Lainnya']};
+function fillTransactionCategories(select,type,selected='',preserveLegacy=false){
+ const list=[...(transactionCategories[type]||transactionCategories.expense)];
+ if(preserveLegacy&&selected&&!list.includes(selected))list.splice(list.length-1,0,selected);
+ select.innerHTML=list.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+ if(selected&&list.includes(selected))select.value=selected;
+}
+
 function salaryAmounts(){return salaryPlan.items.map(x=>salaryPlan.mode==='percentage'?salaryPlan.total*Number(x.amount||0)/100:Number(x.amount||0))}
 function renderSalaryAllocation(){
  const total=Math.max(0,Number(salaryPlan.total)||0),amounts=salaryAmounts(),sum=amounts.reduce((a,b)=>a+b,0),left=total-sum;
@@ -933,6 +941,11 @@ window.removeDebtRecord=async id=>{
 };
 el('debt-filter').onchange=renderDebts;
 el('date').value=new Date().toISOString().slice(0,10);el('debt-date').value=new Date().toISOString().slice(0,10);
+fillTransactionCategories(el('category'),el('type').value);
+fillTransactionCategories(el('reccategory'),el('rectype').value);
+el('type').addEventListener('change',()=>fillTransactionCategories(el('category'),el('type').value));
+el('rectype').addEventListener('change',()=>fillTransactionCategories(el('reccategory'),el('rectype').value));
+
 el('addwallet').onclick=async()=>{const name=el('walletname').value.trim(),balance=Number(el('walletbalance').value||0);if(!name||balance<0)return;const {error}=await db.from('wallets').insert({user_id:user.id,name,balance});if(error){nfAlert(error.message);return}el('walletname').value='';el('walletbalance').value='0';await loadAll()};
 ['txsearch','txfiltertype','txfiltermonth','txsort'].forEach(id=>el(id).addEventListener('input',()=>render()));
 el('exporttx').onclick=exportTransactions;
@@ -1031,8 +1044,10 @@ async function nfTransactionForm(tx){
    '<div class="dialog-field wide"><label for="edit-tx-name">Nama transaksi</label><input id="edit-tx-name" maxlength="100" value="'+esc(tx.name||'')+'"></div>'+
    '<div class="dialog-field"><label for="edit-tx-amount">Nominal (Rp)</label><input id="edit-tx-amount" type="number" min="1" step="1" value="'+Number(tx.amount||0)+'"></div>'+
    '<div class="dialog-field"><label for="edit-tx-date">Tanggal</label><input id="edit-tx-date" type="date" value="'+esc(dateValue)+'"></div>'+
-   '<div class="dialog-field wide"><label for="edit-tx-category">Kategori</label><input id="edit-tx-category" maxlength="60" value="'+esc(tx.category||'Lainnya')+'"></div>';
+   '<div class="dialog-field wide"><label for="edit-tx-category">Kategori</label><select id="edit-tx-category"></select></div>';
   el('edit-tx-type').value=tx.type==='income'?'income':'expense';
+   fillTransactionCategories(el('edit-tx-category'),el('edit-tx-type').value,tx.category||'Lainnya',true);
+   el('edit-tx-type').addEventListener('change',()=>fillTransactionCategories(el('edit-tx-category'),el('edit-tx-type').value));
   el('edit-tx-wallet').value=currentWallet.id;
   el('dialogcancel').classList.remove('hidden');el('dialogok').textContent='Simpan';
   backdrop.classList.add('open');
