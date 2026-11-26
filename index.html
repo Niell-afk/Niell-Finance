@@ -91,6 +91,10 @@
 const SUPABASE_URL = "https://wdgvxaicqjcsmtgwiehz.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_zaw7UL-xMi9u5LIC70rNqg_D-1UgJxQ";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const monthKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01'};
+const monthLabel=()=>new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date());
+const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
+const el=id=>document.getElementById(id);
 let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=null, monthlyAllocation=null, monthlyAllocations=[], authMode='login', booting=false;
 const allocationDefaults=[{name:'Kebutuhan',amount:350000},{name:'Tabungan',amount:350000},{name:'Tagihan',amount:250000},{name:'Dana darurat',amount:200000},{name:'Keluarga',amount:200000},{name:'Hiburan',amount:150000}];
 let salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))};
@@ -109,10 +113,6 @@ function renderSalaryPreviewOnly(){const total=Math.max(0,Number(salaryPlan.tota
 el('salarytotal').addEventListener('input',()=>{salaryPlan.total=Math.max(0,Number(el('salarytotal').value)||0);renderSalaryPreviewOnly()});
 el('salarymode').addEventListener('change',()=>{const next=el('salarymode').value;if(next===salaryPlan.mode)return;const total=Number(salaryPlan.total)||0;if(next==='percentage')salaryPlan.items.forEach((x,i)=>x.amount=total>0?salaryAmounts()[i]/total*100:0);else salaryPlan.items.forEach(x=>x.amount=total*x.amount/100);salaryPlan.mode=next;renderSalaryAllocation()});
 el('savesalary').onclick=async()=>{const total=Number(salaryPlan.total)||0,amounts=salaryAmounts(),sum=amounts.reduce((a,b)=>a+b,0);if(sum>total+0.01){msg('salarymsg','Total alokasi melebihi gaji. Kurangi nominal atau persentasenya.');return}const payload={total:salaryPlan.total,mode:salaryPlan.mode,items:salaryPlan.items};const {data,error}=await db.auth.updateUser({data:{salary_allocation:payload}});if(error){msg('salarymsg','Gagal menyimpan: '+error.message);return}user=data.user||user;msg('salarymsg','Alokasi gaji tersimpan.');renderSalaryAllocation()};
-const monthKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01'};
-const monthLabel=()=>new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date());
-const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
-const el=id=>document.getElementById(id);
 function msg(id,t){el(id).textContent=t}
 function usernameToEmail(name){return name.toLowerCase()+'@users.niellfinance.com'}
 function validUsername(name){return /^[a-zA-Z0-9_]{3,24}$/.test(name)}
