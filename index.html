@@ -168,7 +168,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div><label>Target nominal (Rp)</label><input id="goaltarget" type="number" min="1" placeholder="10000000"></div>
 <div><label>Target tanggal</label><input id="goaldate" type="date"></div>
 </div><p><button id="addgoal">Tambah target</button></p><div id="goalmsg" class="muted"></div></div>
-<div class="section card"><h3>Daftar target</h3><div id="goallist" class="muted">Memuat...</div></div>
+<div class="grid" id="goalsummary" style="margin-bottom:14px"></div><div class="section card"><h3>Daftar target</h3><div id="goallist" class="muted">Memuat...</div></div>
 </section>
 <section id="future-savings" class="page hidden">
 <div class="grid" style="margin-bottom:14px"><div class="card"><div class="muted">Total tabungan masa depan</div><div class="metric pos" id="futuretotal">Rp0</div></div><div class="card"><div class="muted">Setoran bulan ini</div><div class="metric" id="futurecurrent">Rp0</div></div><div class="card"><div class="muted">Target bulan ini</div><div class="metric" id="futuretarget">Rp350.000</div></div></div><div class="card"><h3>Alokasi tabungan bulanan</h3><p class="muted" id="allocationmonth">Bulan ini</p><div class="formgrid">
@@ -678,11 +678,13 @@ el('saveallocation').onclick=async()=>{
  monthlyAllocation=data;monthlyAllocations=[data,...monthlyAllocations.filter(x=>x.month_key!==data.month_key)].sort((a,b)=>b.month_key.localeCompare(a.month_key));renderMonthlyAllocation();msg('allocationmsg','Alokasi bulan ini berhasil disimpan.');
 };
 function renderGoals(){
+ const totalTarget=goals.reduce((a,g)=>a+Number(g.target_amount||0),0),totalSaved=goals.reduce((a,g)=>a+Number(g.current_amount||0),0),completed=goals.filter(g=>Number(g.target_amount)>0&&Number(g.current_amount)>=Number(g.target_amount)).length,pct=totalTarget>0?Math.min(100,totalSaved/totalTarget*100):0;
+ el('goalsummary').innerHTML='<div class="card"><div class="muted">Total target</div><strong>'+money(totalTarget)+'</strong></div><div class="card"><div class="muted">Total terkumpul</div><strong class="pos">'+money(totalSaved)+'</strong><div class="muted">'+pct.toFixed(1)+'% dari seluruh target</div></div><div class="card"><div class="muted">Target tercapai</div><strong>'+completed+' / '+goals.length+'</strong></div>';
  el('goallist').innerHTML=goals.length?goals.map(g=>{
   const target=Number(g.target_amount||0),current=Number(g.current_amount||0),pct=target>0?Math.min(100,current/target*100):0;
   return `<div class="card" style="margin:12px 0"><div style="display:flex;justify-content:space-between;gap:10px"><strong>${esc(g.name)}</strong><span class="pill">${pct.toFixed(1)}%</span></div>
   <p>${money(current)} / ${money(target)}</p><div style="height:9px;background:#263550;border-radius:20px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--green)"></div></div>
-  <p class="muted">Target: ${esc(g.target_date||'Belum ditentukan')}</p>
+  <p class="muted">Target: ${esc(g.target_date||'Belum ditentukan')}${g.target_date?' · '+(new Date(g.target_date+'T00:00:00')<new Date(new Date().toDateString())?'Terlambat':Math.ceil((new Date(g.target_date+'T00:00:00')-new Date(new Date().toDateString()))/86400000)+' hari lagi'):''}</p>
   <button onclick="addGoalMoney('${g.id}')">Tambah saldo</button> <button class="ghost" onclick="editGoal('${g.id}')">Ubah target</button> <button class="ghost" onclick="deleteGoal('${g.id}')">Hapus</button></div>`;
  }).join(''):'Belum ada target tabungan.';
 }
