@@ -31,7 +31,7 @@
 </div>
 <div id="app" class="app hidden">
 <aside class="side"><div class="brand">Niell Finance</div><div class="nav">
-<button class="active" data-page="dashboard">Dashboard</button><button data-page="transactions">Transaksi</button><button data-page="wallets">Dompet</button><button data-page="savings">Tabungan</button><button data-page="future-savings">Tabungan masa depan</button><button data-page="investments">Investasi</button><button data-page="emergency">Dana darurat</button>
+<button class="active" data-page="dashboard">⌂ Dashboard</button><button data-page="transactions">⇄ Transaksi</button><button data-page="wallets">▣ Dompet</button><button data-page="savings">◎ Tabungan</button><button data-page="future-savings">↗ Tabungan masa depan</button><button data-page="investments">◇ Investasi</button><button data-page="emergency">♡ Dana darurat</button><button data-page="statistics">▥ Statistik</button><button data-page="settings">⚙ Pengaturan</button>
 </div></aside>
 <main class="main">
 <div class="top"><div><h1 id="pagetitle">Dashboard</h1><div class="muted" id="welcome">Data tersinkron melalui Supabase</div></div><button class="ghost" id="logout">Keluar</button></div>
@@ -78,6 +78,14 @@
 <div><label>Saldo terkumpul (Rp)</label><input id="emcurrent" type="number" min="0" placeholder="Contoh: 500000"></div></div>
 <p><button id="saveemergency">Simpan dana darurat</button></p><div id="emmsg" class="muted"></div>
 </div><div class="section card"><h3>Progress dana darurat</h3><div id="emview" class="muted">Belum ada data.</div></div></section>
+<section id="statistics" class="page hidden">
+<div class="grid"><div class="card"><div class="muted">Total pemasukan</div><div class="metric pos" id="statincome">Rp0</div></div><div class="card"><div class="muted">Total pengeluaran</div><div class="metric neg" id="statexpense">Rp0</div></div><div class="card"><div class="muted">Selisih arus kas</div><div class="metric" id="statnet">Rp0</div></div></div>
+<div class="section card"><h3>Ringkasan bulanan</h3><div class="tablewrap" id="statmonths">Belum ada data transaksi.</div></div>
+<div class="section card"><h3>Kategori pengeluaran terbesar</h3><div id="statcategories" class="muted">Belum ada pengeluaran.</div></div>
+</section>
+<section id="settings" class="page hidden">
+<div class="card"><h3>Pengaturan akun</h3><p class="muted">Informasi akun yang sedang digunakan.</p><div class="notice" id="accountinfo">Memuat akun...</div><p class="muted">Pengaturan alokasi gaji bisa diubah langsung dari Dashboard. Data transaksi dan tabungan tersimpan melalui akun Supabase.</p><button class="ghost" id="settingslogout">Keluar dari akun</button></div>
+</section>
 </main></div>
 <script>
 const SUPABASE_URL = "https://wdgvxaicqjcsmtgwiehz.supabase.co";
@@ -162,9 +170,19 @@ function render(){
  el('income').textContent=money(mt.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0));
  el('expense').textContent=money(mt.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0));
  el('recent').innerHTML=transactions.slice(0,5).map(t=>`<p>${esc(t.name)} <span class="${t.type==='income'?'pos':'neg'}">${t.type==='income'?'+':'−'}${money(t.amount)}</span></p>`).join('')||'Belum ada transaksi.';
- renderGoals();renderInvestments();renderEmergency();renderMonthlyAllocation();renderSalaryAllocation();renderCashflow(mt);renderDashboardGoal();renderSpendingBreakdown(mt);
+ renderGoals();renderInvestments();renderEmergency();renderMonthlyAllocation();renderSalaryAllocation();renderCashflow(mt);renderDashboardGoal();renderSpendingBreakdown(mt);renderStatistics();renderSettings();
 }
 
+
+function renderStatistics(){
+ const inc=transactions.filter(t=>t.type==='income').reduce((a,t)=>a+Number(t.amount||0),0),out=transactions.filter(t=>t.type==='expense').reduce((a,t)=>a+Number(t.amount||0),0);
+ el('statincome').textContent=money(inc);el('statexpense').textContent=money(out);el('statnet').textContent=(inc-out<0?'−':'')+money(Math.abs(inc-out));el('statnet').className='metric '+(inc-out>=0?'pos':'neg');
+ const now=new Date(),rows=[];for(let off=5;off>=0;off--){const d=new Date(now.getFullYear(),now.getMonth()-off,1),key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),items=transactions.filter(t=>String(t.date||'').slice(0,7)===key),a=items.filter(t=>t.type==='income').reduce((v,t)=>v+Number(t.amount||0),0),b=items.filter(t=>t.type==='expense').reduce((v,t)=>v+Number(t.amount||0),0);rows.push({label:new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(d),a,b})}
+ el('statmonths').innerHTML='<table class="table"><thead><tr><th>Bulan</th><th>Pemasukan</th><th>Pengeluaran</th><th>Selisih</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+x.label+'</td><td class="pos">'+money(x.a)+'</td><td class="neg">'+money(x.b)+'</td><td class="'+(x.a-x.b>=0?'pos':'neg')+'">'+(x.a-x.b<0?'−':'')+money(Math.abs(x.a-x.b))+'</td></tr>').join('')+'</tbody></table>';
+ const cats={};transactions.filter(t=>t.type==='expense').forEach(t=>{const k=t.category||'Lainnya';cats[k]=(cats[k]||0)+Number(t.amount||0)});const top=Object.entries(cats).sort((a,b)=>b[1]-a[1]);el('statcategories').innerHTML=top.length?top.slice(0,8).map((x,i)=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)"><span>'+(i+1)+'. '+esc(x[0])+'</span><strong>'+money(x[1])+'</strong></div>').join(''):'Belum ada pengeluaran.';
+}
+function renderSettings(){const email=user?.email||'Tidak tersedia',username=user?.user_metadata?.username||email.split('@')[0];el('accountinfo').innerHTML='<div><span class="muted">Username</span><br><strong>'+esc(username)+'</strong></div><div style="margin-top:10px"><span class="muted">Email akun</span><br><strong>'+esc(email)+'</strong></div>'}
+el('settingslogout').onclick=()=>el('logout').click();
 function goPage(page){const btn=document.querySelector('[data-page="'+page+'"]');if(!btn)return;document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===btn));document.querySelectorAll('.page').forEach(x=>x.classList.toggle('hidden',x.id!==page));el('pagetitle').textContent=btn.textContent;window.scrollTo({top:0,behavior:'smooth'})}
 function renderCashflow(currentMonthTransactions){
  const labels=[],incomeData=[],expenseData=[];const now=new Date();
