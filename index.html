@@ -186,6 +186,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div class="grid"><div class="card"><div class="muted">Total pemasukan</div><div class="metric pos" id="statincome">Rp0</div></div><div class="card"><div class="muted">Total pengeluaran</div><div class="metric neg" id="statexpense">Rp0</div></div><div class="card"><div class="muted">Selisih arus kas</div><div class="metric" id="statnet">Rp0</div></div></div>
 <div class="section card"><h3>Ringkasan bulanan</h3><div class="tablewrap" id="statmonths">Belum ada data transaksi.</div></div>
 <div class="section card"><h3>Kategori pengeluaran terbesar</h3><div id="statcategories" class="muted">Belum ada pengeluaran.</div></div>
+<div class="section card"><h3>Batas pengeluaran bulanan</h3><p class="muted">Atur limit per kategori. Pemakaian dihitung dari transaksi pengeluaran bulan ini.</p><div class="form-grid"><div><label for="budgetcategory">Nama kategori</label><input id="budgetcategory" placeholder="Contoh: Makan"></div><div><label for="budgetlimit">Batas per bulan (Rp)</label><input id="budgetlimit" type="number" min="1" step="1000" placeholder="Contoh: 500000"></div></div><button id="savebudget" style="margin-top:12px">Simpan batas</button><div id="budgetmsg" class="muted" style="margin-top:8px"></div><div id="budgetlist" style="margin-top:12px"></div></div>
 </section>
 <section id="settings" class="page hidden">
 <div class="card"><h3>Pengaturan akun</h3><p class="muted">Informasi akun yang sedang digunakan.</p><div class="notice" id="accountinfo">Memuat akun...</div><p class="muted">Pengaturan alokasi gaji bisa diubah langsung dari Dashboard. Data transaksi dan tabungan tersimpan melalui akun Supabase.</p><button class="ghost" id="settingslogout">Keluar dari akun</button></div>
@@ -238,7 +239,7 @@ const monthKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMo
 const monthLabel=()=>new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date());
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const el=id=>document.getElementById(id);
-let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=null, monthlyAllocation=null, monthlyAllocations=[], authMode='login', booting=false;
+let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=null, monthlyAllocation=null, monthlyAllocations=[], categoryBudgets=[], authMode='login', booting=false;
 const allocationDefaults=[{name:'Kebutuhan',amount:350000},{name:'Tabungan',amount:350000},{name:'Tagihan',amount:250000},{name:'Dana darurat',amount:200000},{name:'Keluarga',amount:200000},{name:'Hiburan',amount:150000}];
 let salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))};
 const allocColors=['#4f8cff','#35c995','#a78bfa','#f5b84b','#ff7185','#36c6d8'];
@@ -340,7 +341,43 @@ function renderStatistics(){
  el('statincome').textContent=money(inc);el('statexpense').textContent=money(out);el('statnet').textContent=(inc-out<0?'−':'')+money(Math.abs(inc-out));el('statnet').className='metric '+(inc-out>=0?'pos':'neg');
  const now=new Date(),rows=[];for(let off=5;off>=0;off--){const d=new Date(now.getFullYear(),now.getMonth()-off,1),key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),items=transactions.filter(t=>String(t.date||'').slice(0,7)===key),a=items.filter(t=>t.type==='income').reduce((v,t)=>v+Number(t.amount||0),0),b=items.filter(t=>t.type==='expense').reduce((v,t)=>v+Number(t.amount||0),0);rows.push({label:new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(d),a,b})}
  el('statmonths').innerHTML='<table class="table"><thead><tr><th>Bulan</th><th>Pemasukan</th><th>Pengeluaran</th><th>Selisih</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+x.label+'</td><td class="pos">'+money(x.a)+'</td><td class="neg">'+money(x.b)+'</td><td class="'+(x.a-x.b>=0?'pos':'neg')+'">'+(x.a-x.b<0?'−':'')+money(Math.abs(x.a-x.b))+'</td></tr>').join('')+'</tbody></table>';
- const cats={};transactions.filter(t=>t.type==='expense').forEach(t=>{const k=t.category||'Lainnya';cats[k]=(cats[k]||0)+Number(t.amount||0)});const top=Object.entries(cats).sort((a,b)=>b[1]-a[1]);el('statcategories').innerHTML=top.length?top.slice(0,8).map((x,i)=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)"><span>'+(i+1)+'. '+esc(x[0])+'</span><strong>'+money(x[1])+'</strong></div>').join(''):'Belum ada pengeluaran.';
+ const cats={};transactions.filter(t=>t.type==='expense').forEach(t=>{const k=t.category||'Lainnya';cats[k]=(cats[k]||0)+Number(t.amount||0)});const top=Object.entries(cats).sort((a,b)=>b[1]-a[1]);el('statcategories').innerHTML=top.length?top.slice(0,8).map((x,i)=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)"><span>'+(i+1)+'. '+esc(x[0])+'</span><strong>'+money(x[1])+'</strong></div>').join(''):'Belum ada pengeluaran.';renderCategoryBudgets();
+}
+function currentMonthExpenses(category){
+ const key=monthKey().slice(0,7);
+ return transactions.filter(t=>t.type==='expense'&&String(t.date||'').slice(0,7)===key&&(t.category||'Lainnya').toLowerCase()===category.toLowerCase()).reduce((sum,t)=>sum+Number(t.amount||0),0);
+}
+function renderCategoryBudgets(){
+ const host=el('budgetlist');if(!host)return;
+ if(!categoryBudgets.length){host.innerHTML='<div class="muted">Belum ada batas pengeluaran yang diatur.</div>';return}
+ host.innerHTML=categoryBudgets.map((b,i)=>{
+  const spent=currentMonthExpenses(b.category),limit=Number(b.limit)||0,pct=limit>0?spent/limit*100:0,over=spent>limit;
+  return '<div class="card" style="margin:10px 0;padding:14px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><strong>'+esc(b.category)+'</strong><div class="muted" style="margin-top:4px">'+money(spent)+' / '+money(limit)+'</div></div><div class="'+(over?'neg':'pos')+'">'+(over?'Melewati limit':'Tersisa '+money(Math.max(0,limit-spent)))+'</div></div><div class="goal-progress" style="margin-top:10px"><span style="width:'+Math.min(100,pct)+'%;background:'+(over?'#ff7185':'#35c995')+'"></span></div><div class="muted" style="font-size:12px;margin-top:5px">'+pct.toFixed(1)+'% terpakai'+(over?' · Lebih '+money(spent-limit):'')+'</div><div style="display:flex;gap:8px;margin-top:10px"><button class="ghost" onclick="editCategoryBudget('+i+')">Ubah</button><button class="ghost" onclick="deleteCategoryBudget('+i+')">Hapus</button></div></div>';
+ }).join('');
+}
+async function persistCategoryBudgets(){
+ const {data,error}=await db.auth.updateUser({data:{...user.user_metadata,category_budgets:categoryBudgets}});
+ if(error){msg('budgetmsg','Gagal menyimpan: '+error.message);return false}
+ user=data.user||user;msg('budgetmsg','Batas pengeluaran berhasil disimpan.');renderCategoryBudgets();return true;
+}
+el('savebudget').onclick=async()=>{
+ const category=el('budgetcategory').value.trim(),limit=Number(el('budgetlimit').value);
+ if(!category||!Number.isFinite(limit)||limit<=0){msg('budgetmsg','Isi kategori dan batas nominal lebih dari 0.');return}
+ const existing=categoryBudgets.findIndex(x=>x.category.toLowerCase()===category.toLowerCase());
+ if(existing>=0)categoryBudgets[existing]={category,limit};else categoryBudgets.push({category,limit});
+ categoryBudgets.sort((a,b)=>a.category.localeCompare(b.category,'id'));
+ el('budgetcategory').value='';el('budgetlimit').value='';
+ await persistCategoryBudgets();
+};
+async function editCategoryBudget(index){
+ const item=categoryBudgets[index];if(!item)return;
+ el('budgetcategory').value=item.category;el('budgetlimit').value=item.limit;
+ el('budgetcategory').focus();msg('budgetmsg','Ubah kategori atau nominal, lalu tekan Simpan batas.');
+}
+async function deleteCategoryBudget(index){
+ const item=categoryBudgets[index];if(!item)return;
+ if(!await nfConfirm('Hapus batas pengeluaran kategori '+item.category+'?'))return;
+ categoryBudgets.splice(index,1);await persistCategoryBudgets();
 }
 function renderSettings(){const email=user?.email||'Tidak tersedia',username=user?.user_metadata?.username||email.split('@')[0];el('accountinfo').innerHTML='<div><span class="muted">Username</span><br><strong>'+esc(username)+'</strong></div><div style="margin-top:10px"><span class="muted">Email akun</span><br><strong>'+esc(email)+'</strong></div>'}
 el('settingslogout').onclick=()=>el('logout').click();
@@ -377,7 +414,7 @@ async function deleteWallet(id){
 }
 async function boot(session){
  if(booting)return; booting=true;
- user=session.user;const savedPlan=user.user_metadata?.salary_allocation;if(savedPlan&&Array.isArray(savedPlan.items)&&savedPlan.items.length===allocationDefaults.length){salaryPlan={total:Number(savedPlan.total)||1500000,mode:savedPlan.mode==='percentage'?'percentage':'fixed',items:savedPlan.items.map((x,i)=>({name:allocationDefaults[i].name,amount:Number(x.amount)||0}))}}else{salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))}}el('auth').classList.add('hidden');el('app').classList.remove('hidden');
+ user=session.user;categoryBudgets=Array.isArray(user.user_metadata?.category_budgets)?user.user_metadata.category_budgets.filter(x=>x&&typeof x.category==='string'&&Number(x.limit)>0).map(x=>({category:x.category,limit:Number(x.limit)})):[];const savedPlan=user.user_metadata?.salary_allocation;if(savedPlan&&Array.isArray(savedPlan.items)&&savedPlan.items.length===allocationDefaults.length){salaryPlan={total:Number(savedPlan.total)||1500000,mode:savedPlan.mode==='percentage'?'percentage':'fixed',items:savedPlan.items.map((x,i)=>({name:allocationDefaults[i].name,amount:Number(x.amount)||0}))}}else{salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))}}el('auth').classList.add('hidden');el('app').classList.remove('hidden');
  const username=user.user_metadata?.username||user.email?.split('@')[0]||'pengguna';
  el('welcome').textContent='Masuk sebagai '+username;
  await loadAll();
