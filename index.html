@@ -198,6 +198,40 @@ body > #dialogbackdrop .dialog-box{
  width:min(100%,440px)!important;max-height:calc(100vh - 36px);overflow-y:auto;
 }
 
+
+/* Neon separation for transaction sections */
+#transactions>.card,#transactions>.section.card{
+ position:relative;margin-top:18px!important;padding:24px!important;
+ border:1px solid rgba(65,153,255,.48)!important;
+ background:linear-gradient(145deg,rgba(17,35,62,.98),rgba(9,19,36,.99))!important;
+ box-shadow:0 0 0 1px rgba(41,116,220,.12),0 12px 34px rgba(0,0,0,.24),0 0 24px rgba(35,116,255,.09)!important;
+}
+#transactions>.card:first-child{margin-top:0!important}
+#transactions>.card:before,#transactions>.section.card:before{
+ content:"";position:absolute;left:0;top:18px;bottom:18px;width:3px;border-radius:0 5px 5px 0;
+ background:linear-gradient(180deg,#45caff,#4f8cff,#8b5cf6);
+ box-shadow:0 0 12px rgba(65,170,255,.65),0 0 24px rgba(65,130,255,.25);
+}
+#transactions>.card>h3,#transactions>.section.card>h3{
+ padding:0 0 14px;margin:0 0 19px!important;border-bottom:1px solid rgba(83,160,255,.34);
+ text-shadow:0 0 12px rgba(75,150,255,.25);
+}
+#transactions .formgrid{gap:16px 18px}
+#transactions .formgrid>div{position:relative;padding:0 0 11px;border-bottom:1px solid rgba(88,137,205,.18)}
+#transactions .formgrid label{color:#9fcaff}
+#transactions input,#transactions select{border-color:rgba(80,145,220,.42);box-shadow:inset 0 0 12px rgba(42,105,190,.06)}
+#transactions input:hover,#transactions select:hover{border-color:rgba(76,174,255,.72)}
+#transactions input:focus,#transactions select:focus{border-color:#48caff!important;box-shadow:0 0 0 3px rgba(55,174,255,.14),0 0 16px rgba(55,174,255,.12)!important}
+#transactions #recurringlist>div,#transactions #recurringlist>.card{
+ border:1px solid rgba(73,146,230,.34)!important;border-radius:13px!important;
+ background:linear-gradient(110deg,rgba(24,49,82,.82),rgba(14,29,51,.92))!important;
+ box-shadow:inset 0 0 18px rgba(58,135,230,.05),0 0 14px rgba(49,124,220,.08);
+}
+#transactions #txlist .table td{border-top-color:rgba(76,151,255,.24);border-bottom-color:rgba(76,151,255,.24)}
+#transactions #txlist .table td:first-child{border-left-color:rgba(76,151,255,.24)}
+#transactions #txlist .table td:last-child{border-right-color:rgba(76,151,255,.24)}
+@media(max-width:680px){#transactions>.card,#transactions>.section.card{padding:18px!important}#transactions .formgrid{gap:12px}}
+
 </style>
 </head>
 <body>
