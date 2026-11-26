@@ -52,6 +52,50 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .auth{background:linear-gradient(145deg,#14223a,#0e182b);border-color:rgba(90,145,230,.24);box-shadow:0 24px 70px rgba(0,0,0,.32)}
 @media(max-width:900px){.app{grid-template-columns:190px minmax(0,1fr)}.side{padding:22px 10px}.main{padding:22px 16px}}
 @media(max-width:680px){.app{display:block}.side{position:relative;height:auto;padding:12px;border-right:0;border-bottom:1px solid var(--line)}.brand{margin:4px 8px 12px}.nav{display:flex;overflow-x:auto;padding-bottom:4px;gap:6px}.nav button{white-space:nowrap;min-height:40px;padding:9px 11px}.main{padding:18px 13px}.top h1{font-size:23px}.grid{grid-template-columns:1fr;gap:10px}.dash-two{grid-template-columns:1fr}.card{padding:17px;border-radius:15px}.metric{font-size:27px}}
+
+/* Secondary pages refinement */
+.page{animation:pageIn .22s ease}
+@keyframes pageIn{from{opacity:.65;transform:translateY(5px)}to{opacity:1;transform:none}}
+.page>.card,.page>.section.card{margin-top:0}
+.page h3{font-size:17px;margin:0 0 18px;color:#eaf2ff}
+.page .formgrid{gap:14px}
+.page label{font-size:12px;letter-spacing:.025em;color:#9fb2d1;margin:0 0 7px}
+.page input,.page select{min-height:46px;background:#0b1527;border:1px solid #2b4163;border-radius:12px;padding:12px 14px;color:#eaf2ff;transition:border-color .18s,box-shadow .18s}
+.page input:focus,.page select:focus{border-color:#5797ff;box-shadow:0 0 0 3px rgba(79,145,255,.12);outline:0}
+.page input::placeholder{color:#647895}
+.page .card>p{color:#c5d3e9}
+.page .card>p .muted{color:#91a3c2}
+.page button{min-height:40px;padding:10px 15px}
+#transactions>.card:first-child,#wallets>.card:first-child,#savings>.card:first-child,#investments>.card:first-child,#emergency>.card:first-child{background:linear-gradient(145deg,#142541,#101b30);border-color:rgba(83,145,245,.26)}
+#txmsg,#goalmsg,#invmsg,#emmsg,#allocationmsg{display:inline-block;margin-left:8px;font-size:13px}
+#txlist .table{border-collapse:separate;border-spacing:0 7px;margin-top:4px;min-width:680px}
+#txlist .table th{border:0;padding:10px 13px;color:#91a6c7}
+#txlist .table td{background:#14223a;border-top:1px solid rgba(112,149,205,.12);border-bottom:1px solid rgba(112,149,205,.12);padding:13px}
+#txlist .table td:first-child{border-left:1px solid rgba(112,149,205,.12);border-radius:11px 0 0 11px}
+#txlist .table td:last-child{border-right:1px solid rgba(112,149,205,.12);border-radius:0 11px 11px 0}
+#txlist .table td button{min-height:32px;padding:7px 10px;font-size:12px}
+#walletlist,#goallist,#investmentlist{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+#walletlist>.card,#goallist>.card,#investmentlist>.card{margin:0!important;background:linear-gradient(145deg,#172944,#111e33);border-color:rgba(100,145,205,.18);min-width:0}
+#walletlist>.card strong,#goallist>.card strong,#investmentlist>.card strong{font-size:16px;color:#f0f5ff}
+#walletlist>.card p:first-of-type{font-size:24px;font-weight:800;letter-spacing:-.03em;color:#eaf2ff;margin:13px 0 18px}
+#goallist>.card p{margin:12px 0}
+#goallist>.card button,#investmentlist>.card button,#walletlist>.card button{font-size:12px;padding:8px 11px;min-height:34px}
+#future-savings>.grid{gap:12px}
+#future-savings>.grid>.card{min-height:125px}
+#future-savings>.card,#future-savings>.section.card{margin-top:14px}
+#allocationprogress{padding:14px 16px;margin-top:12px;border-radius:12px;background:rgba(68,132,225,.09);border:1px solid rgba(88,145,230,.18);color:#c5d8f7}
+#allocationhistory .table{min-width:520px}
+#emview{padding:18px;border:1px solid rgba(90,145,220,.18);border-radius:14px;background:#14233b}
+#emview strong{font-size:22px;color:#eef5ff}
+#statistics .table{min-width:480px}
+#settings .notice{padding:16px;background:#14233b;color:#d4e1f6}
+@media(max-width:680px){
+ #walletlist,#goallist,#investmentlist{grid-template-columns:1fr}
+ #txlist .table{min-width:620px}
+ .page .formgrid{gap:11px}
+ #txmsg,#goalmsg,#invmsg,#emmsg,#allocationmsg{display:block;margin:10px 0 0}
+}
+
 </style>
 </head>
 <body>
