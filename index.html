@@ -397,7 +397,7 @@ body > #dialogbackdrop .dialog-box{
 </section>
 <section id="wallets" class="page hidden">
 <div class="card"><h3>Tambah dompet</h3><div class="row"><div><label>Nama dompet</label><input id="walletname" placeholder="Cash / BCA / DANA"></div><div><label>Saldo awal (Rp)</label><input id="walletbalance" type="number" min="0" value="0"></div><div><button id="addwallet">Tambah dompet</button></div></div></div>
-<div class="section card"><h3>Daftar dompet</h3><div id="walletlist"></div></div>
+<div class="section card"><h3>Transfer antar dompet</h3><p class="muted">Pindahkan saldo tanpa dicatat sebagai pemasukan atau pengeluaran.</p><div class="formgrid"><div><label for="transferfrom">Dari dompet</label><select id="transferfrom"></select></div><div><label for="transferto">Ke dompet</label><select id="transferto"></select></div><div><label for="transferamount">Nominal (Rp)</label><input id="transferamount" type="number" min="1" step="1" placeholder="500000"></div><div><label for="transferdate">Tanggal</label><input id="transferdate" type="date"></div><div class="wide"><label for="transfernote">Catatan (opsional)</label><input id="transfernote" maxlength="120" placeholder="Contoh: Pindah uang tunai ke BNI"></div></div><p><button id="savetransfer">Pindahkan saldo</button></p><div id="transfermsg" class="muted"></div></div><div class="section card"><h3>Riwayat transfer</h3><div id="transferhistory" class="muted">Belum ada transfer.</div></div><div class="section card"><h3>Daftar dompet</h3><div id="walletlist"></div></div>
 </section>
 <section id="savings" class="page hidden">
 <div class="section card"><h3>Buat target tabungan</h3><div class="formgrid">
@@ -512,7 +512,7 @@ const monthKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMo
 const monthLabel=()=>new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric'}).format(new Date());
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const el=id=>document.getElementById(id);
-let debtRecords=[];
+let debtRecords=[], walletTransfers=[];
 let user=null, wallets=[], transactions=[], goals=[], investments=[], emergency=null, emergencyDepositTracking={month_key:'',monthly_deposited:0}, monthlyAllocation=null, monthlyAllocations=[], categoryBudgets=[], budgetAlertHistory=[], budgetAlertStates={}, budgetAlertSaving=false, recurringTransactions=[], authMode='login', booting=false;
 const allocationDefaults=[{name:'Kebutuhan',amount:350000},{name:'Tabungan',amount:350000},{name:'Tagihan',amount:250000},{name:'Dana darurat',amount:200000},{name:'Keluarga',amount:200000},{name:'Hiburan',amount:150000}];
 let salaryPlan={total:1500000,mode:'fixed',items:allocationDefaults.map(x=>({...x}))};
@@ -584,7 +584,11 @@ async function loadAll(){
  db.from('monthly_savings_allocations').select('*').eq('user_id',user.id).order('month_key',{ascending:false})
 ]);
  if(w.error||t.error||g.error||i.error||e.error||ma.error){msg('welcome','Gagal memuat data: '+(w.error?.message||t.error?.message||g.error?.message||i.error?.message||e.error?.message||ma.error?.message));return}
- wallets=w.data||[];transactions=t.data||[];goals=g.data||[];investments=i.data||[];emergency=e.data||null;monthlyAllocations=ma.data||[];monthlyAllocation=monthlyAllocations.find(x=>x.month_key===monthKey())||null;render();
+ wallets=w.data||[];transactions=t.data||[];goals=g.data||[];investments=i.data||[];emergency=e.data||null;monthlyAllocations=ma.data||[];monthlyAllocation=monthlyAllocations.find(x=>x.month_key===monthKey())||null;
+  const transferResult=await db.from('wallet_transfers').select('*').order('transfer_date',{ascending:false}).order('created_at',{ascending:false});
+  walletTransfers=transferResult.data||[];
+  render();
+  if(transferResult.error)msg('transfermsg','Aktifkan fitur transfer dulu dengan menjalankan SQL migration di folder supabase/migrations pada GitHub.');
 }
 function exportTransactions(){
  const q=(el('txsearch')?.value||'').trim().toLowerCase(),kind=el('txfiltertype')?.value||'all',filterMonth=el('txfiltermonth')?.value||'',sort=el('txsort')?.value||'newest';
@@ -598,9 +602,17 @@ function exportTransactions(){
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='niell-finance-transaksi-'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
  msg('txmsg',rows.length+' transaksi berhasil diekspor.');
 }
+function renderWalletTransfers(){
+ const names=new Map(wallets.map(w=>[w.id,w.name]));
+ el('transferfrom').innerHTML=wallets.map(w=>'<option value="'+esc(w.id)+'">'+esc(w.name)+' · '+money(w.balance)+'</option>').join('');
+ el('transferto').innerHTML=wallets.map(w=>'<option value="'+esc(w.id)+'">'+esc(w.name)+'</option>').join('');
+ if(wallets.length>1&&el('transferfrom').value===el('transferto').value)el('transferto').selectedIndex=1;
+ el('savetransfer').disabled=wallets.length<2;
+ el('transferhistory').innerHTML=walletTransfers.length?'<div class="tablewrap"><table class="table"><thead><tr><th>Tanggal</th><th>Transfer</th><th>Nominal</th><th>Catatan</th></tr></thead><tbody>'+walletTransfers.map(t=>'<tr><td>'+esc(t.transfer_date||'')+'</td><td>'+esc(names.get(t.from_wallet_id)||'Dompet')+' → '+esc(names.get(t.to_wallet_id)||'Dompet')+'</td><td>'+money(t.amount)+'</td><td>'+esc(t.note||'-')+'</td></tr>').join('')+'</tbody></table></div>':'Belum ada riwayat transfer.';
+}
 function render(){
  el('wallet').innerHTML=wallets.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');el('recwallet').innerHTML=wallets.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');renderRecurring();renderDashboardBudgetAlerts();
- el('walletlist').innerHTML=wallets.length?wallets.map(w=>`<div class="card" style="margin:12px 0"><strong>${esc(w.name)}</strong><p>${money(w.balance)}</p><button onclick="editWallet('${w.id}')">Ubah nama</button> <button class="ghost" onclick="deleteWallet('${w.id}')">Hapus</button></div>`).join(''):'Belum ada dompet.';
+ renderWalletTransfers();el('walletlist').innerHTML=wallets.length?wallets.map(w=>`<div class="card" style="margin:12px 0"><strong>${esc(w.name)}</strong><p>${money(w.balance)}</p><button onclick="editWallet('${w.id}')">Ubah nama</button> <button class="ghost" onclick="deleteWallet('${w.id}')">Hapus</button></div>`).join(''):'Belum ada dompet.';
  const q=(el('txsearch')?.value||'').trim().toLowerCase(),kind=el('txfiltertype')?.value||'all',filterMonth=el('txfiltermonth')?.value||'',sort=el('txsort')?.value||'newest';
  const filtered=transactions.filter(t=>(kind==='all'||t.type===kind)&&(!filterMonth||(t.date||'').startsWith(filterMonth))&&(!q||[t.name,t.category,t.date].some(v=>String(v||'').toLowerCase().includes(q))));
  filtered.sort((a,b)=>sort==='oldest'?(a.date||'').localeCompare(b.date||''):sort==='highest'?Number(b.amount||0)-Number(a.amount||0):sort==='lowest'?Number(a.amount||0)-Number(b.amount||0):(b.date||'').localeCompare(a.date||''));
@@ -940,12 +952,27 @@ window.removeDebtRecord=async id=>{
  debtRecords=debtRecords.filter(x=>x.id!==id);await saveDebtRecords('Catatan berhasil dihapus.');
 };
 el('debt-filter').onchange=renderDebts;
-el('date').value=new Date().toISOString().slice(0,10);el('debt-date').value=new Date().toISOString().slice(0,10);
+el('date').value=new Date().toISOString().slice(0,10);el('debt-date').value=new Date().toISOString().slice(0,10);el('transferdate').value=new Date().toISOString().slice(0,10);
 fillTransactionCategories(el('category'),el('type').value);
 fillTransactionCategories(el('reccategory'),el('rectype').value);
 el('type').addEventListener('change',()=>fillTransactionCategories(el('category'),el('type').value));
 el('rectype').addEventListener('change',()=>fillTransactionCategories(el('reccategory'),el('rectype').value));
 
+el('savetransfer').onclick=async()=>{
+ const from=el('transferfrom').value,to=el('transferto').value,amount=Number(el('transferamount').value),date=el('transferdate').value,note=el('transfernote').value.trim();
+ if(!from||!to){msg('transfermsg','Buat minimal dua dompet untuk melakukan transfer.');return}
+ if(from===to){msg('transfermsg','Dompet asal dan tujuan harus berbeda.');return}
+ if(!Number.isFinite(amount)||amount<=0||!date){msg('transfermsg','Isi nominal dan tanggal dengan benar.');return}
+ const btn=el('savetransfer');btn.disabled=true;
+ try{
+  const {error}=await db.rpc('transfer_between_wallets',{p_from_wallet_id:from,p_to_wallet_id:to,p_amount:amount,p_date:date,p_note:note||null});
+  if(error)throw error;
+  el('transferamount').value='';el('transfernote').value='';
+  msg('transfermsg','Transfer berhasil. Saldo kedua dompet sudah diperbarui.');
+  await loadAll();
+ }catch(error){msg('transfermsg','Gagal transfer: '+(error.message||'Terjadi kesalahan'))}
+ finally{btn.disabled=false}
+};
 el('addwallet').onclick=async()=>{const name=el('walletname').value.trim(),balance=Number(el('walletbalance').value||0);if(!name||balance<0)return;const {error}=await db.from('wallets').insert({user_id:user.id,name,balance});if(error){nfAlert(error.message);return}el('walletname').value='';el('walletbalance').value='0';await loadAll()};
 ['txsearch','txfiltertype','txfiltermonth','txsort'].forEach(id=>el(id).addEventListener('input',()=>render()));
 el('exporttx').onclick=exportTransactions;
