@@ -110,7 +110,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .dialog-box h3{margin:0 0 10px;font-size:18px;color:#eff5ff}
 .dialog-message{margin:0 0 16px;color:#b8c9e3;white-space:pre-wrap;line-height:1.55}
 .dialog-input{width:100%;min-height:46px;padding:12px 14px;border:1px solid #345078;border-radius:11px;background:#091426;color:#eff5ff}
+.dialog-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.dialog-field{min-width:0}.dialog-field.wide{grid-column:1/-1}
+.dialog-field label{display:block;margin:0 0 6px;color:#9fb2d1;font-size:12px}
+.dialog-field input,.dialog-field select{width:100%;min-height:44px;padding:10px 12px;border:1px solid #345078;border-radius:10px;background:#091426;color:#eff5ff}
 .dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+@media(max-width:480px){.dialog-form{grid-template-columns:1fr}.dialog-field.wide{grid-column:auto}}
 .dialog-actions button{min-width:88px}
 
 </style>
@@ -192,6 +197,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   <h3 id="dialogtitle">Niell Finance</h3>
   <p id="dialogmessage" class="dialog-message"></p>
   <input id="dialoginput" class="dialog-input hidden" autocomplete="off">
+  <div id="dialogform" class="dialog-form hidden"></div>
   <div class="dialog-actions">
    <button id="dialogcancel" class="ghost">Batal</button>
    <button id="dialogok">Oke</button>
@@ -464,39 +470,50 @@ async function deleteGoal(id){
  const {error}=await db.from('savings_goals').delete().eq('id',id).eq('user_id',user.id);
  if(error){nfAlert('Gagal: '+error.message);return}await loadAll();
 }
+async function nfTransactionForm(tx){
+ return new Promise(resolve=>{
+  const backdrop=el('dialogbackdrop'),form=el('dialogform'),input=el('dialoginput');
+  const currentWallet=wallets.find(w=>w.id===tx.source_wallet_id)||wallets[0];
+  const dateValue=String(tx.date||'').slice(0,10);
+  el('dialogtitle').textContent='Edit transaksi';
+  el('dialogmessage').textContent='Ubah detail transaksi dalam satu form.';
+  input.classList.add('hidden');form.classList.remove('hidden');
+  form.innerHTML=
+   '<div class="dialog-field"><label for="edit-tx-type">Jenis transaksi</label><select id="edit-tx-type"><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select></div>'+
+   '<div class="dialog-field"><label for="edit-tx-wallet">Dompet</label><select id="edit-tx-wallet">'+wallets.map(w=>'<option value="'+esc(w.id)+'">'+esc(w.name)+'</option>').join('')+'</select></div>'+
+   '<div class="dialog-field wide"><label for="edit-tx-name">Nama transaksi</label><input id="edit-tx-name" maxlength="100" value="'+esc(tx.name||'')+'"></div>'+
+   '<div class="dialog-field"><label for="edit-tx-amount">Nominal (Rp)</label><input id="edit-tx-amount" type="number" min="1" step="1" value="'+Number(tx.amount||0)+'"></div>'+
+   '<div class="dialog-field"><label for="edit-tx-date">Tanggal</label><input id="edit-tx-date" type="date" value="'+esc(dateValue)+'"></div>'+
+   '<div class="dialog-field wide"><label for="edit-tx-category">Kategori</label><input id="edit-tx-category" maxlength="60" value="'+esc(tx.category||'Lainnya')+'"></div>';
+  el('edit-tx-type').value=tx.type==='income'?'income':'expense';
+  el('edit-tx-wallet').value=currentWallet.id;
+  el('dialogcancel').classList.remove('hidden');el('dialogok').textContent='Simpan';
+  backdrop.classList.add('open');
+  const finish=value=>{
+   backdrop.classList.remove('open');form.classList.add('hidden');form.innerHTML='';
+   el('dialogok').onclick=null;el('dialogcancel').onclick=null;
+   resolve(value);
+  };
+  el('dialogok').onclick=()=>finish({
+   type:el('edit-tx-type').value,walletId:el('edit-tx-wallet').value,
+   name:el('edit-tx-name').value.trim(),amount:Number(el('edit-tx-amount').value),
+   date:el('edit-tx-date').value,category:el('edit-tx-category').value.trim()
+  });
+  el('dialogcancel').onclick=()=>finish(null);
+ });
+}
 async function editTransaction(id){
  const tx=transactions.find(t=>t.id===id);if(!tx)return;
  if(!wallets.length){nfAlert('Belum ada dompet.');return}
- const type=await nfPrompt('Jenis transaksi: income untuk pemasukan, expense untuk pengeluaran.',tx.type);
- if(type===null)return;
- const cleanType=type.trim().toLowerCase();
- if(!['income','expense'].includes(cleanType)){nfAlert('Jenis harus income atau expense.');return}
- const name=await nfPrompt('Nama transaksi:',tx.name||'');if(name===null)return;
- const amountRaw=await nfPrompt('Nominal (Rp):',String(tx.amount));if(amountRaw===null)return;
- const amount=Number(amountRaw);
- if(!Number.isFinite(amount)||amount<=0){nfAlert('Nominal tidak valid.');return}
- const dateInput=await nfPrompt('Tanggal (DD/MM/YYYY atau YYYY-MM-DD):',tx.date||'');if(dateInput===null)return;
- const dateNums=dateInput.match(/[0-9]+/g)||[];
- if(dateNums.length!==3){nfAlert('Masukkan tanggal dengan 3 bagian, contoh 25/11/2026.');return}
- let year,month,day;
- if(dateNums[0].length===4){year=Number(dateNums[0]);month=Number(dateNums[1]);day=Number(dateNums[2])}
- else{day=Number(dateNums[0]);month=Number(dateNums[1]);year=Number(dateNums[2])}
- if(!year||month<1||month>12||day<1||day>31){nfAlert('Tanggal tidak valid. Contoh: 25/11/2026');return}
- const date=String(year).padStart(4,'0')+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
- const category=await nfPrompt('Kategori:',tx.category||'Lainnya');if(category===null)return;
- const walletChoices=wallets.map((w,i)=>(i+1)+'. '+w.name+' ('+money(w.balance)+')').join('\n');
- const currentIndex=Math.max(0,wallets.findIndex(w=>w.id===tx.source_wallet_id));
- const walletChoice=await nfPrompt('Pilih nomor dompet:\n'+walletChoices,String(currentIndex+1));if(walletChoice===null)return;
- const walletIndex=Number(walletChoice)-1;
- if(!Number.isInteger(walletIndex)||!wallets[walletIndex]){nfAlert('Nomor dompet tidak valid.');return}
+ const values=await nfTransactionForm(tx);if(!values)return;
+ if(!values.name){nfAlert('Nama transaksi tidak boleh kosong.');return}
+ if(!Number.isFinite(values.amount)||values.amount<=0){nfAlert('Nominal harus lebih dari nol.');return}
+ if(!values.date){nfAlert('Tanggal transaksi wajib diisi.');return}
+ if(!values.category){nfAlert('Kategori tidak boleh kosong.');return}
+ if(!wallets.some(w=>w.id===values.walletId)){nfAlert('Dompet tidak valid.');return}
  const {error}=await db.rpc('update_wallet_transaction',{
-  p_transaction_id:id,
-  p_wallet_id:wallets[walletIndex].id,
-  p_type:cleanType,
-  p_name:name.trim(),
-  p_amount:amount,
-  p_date:date,
-  p_category:category
+  p_transaction_id:id,p_wallet_id:values.walletId,p_type:values.type,
+  p_name:values.name,p_amount:values.amount,p_date:values.date,p_category:values.category
  });
  if(error){nfAlert('Gagal mengubah transaksi: '+error.message);return}
  await loadAll();
