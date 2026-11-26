@@ -799,7 +799,6 @@ async function deleteWallet(id){
  const wallet=wallets.find(w=>w.id===id);if(!wallet)return;
  const linked=transactions.some(t=>t.source_wallet_id===id||t.destination_wallet_id===id);
  if(linked){nfAlert('Dompet ini masih memiliki riwayat transaksi. Hapus riwayat transaksinya terlebih dahulu.');return}
- if(Number(wallet.balance||0)!==0){nfAlert('Saldo dompet harus Rp0 sebelum dihapus.');return}
  if(!await nfConfirm('Hapus dompet '+wallet.name+'?'))return;
  const {error}=await db.from('wallets').delete().eq('id',id).eq('user_id',user.id);
  if(error){nfAlert('Gagal menghapus dompet: '+error.message);return}
