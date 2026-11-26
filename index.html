@@ -189,7 +189,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <div class="section card"><h3>Batas pengeluaran bulanan</h3><p class="muted">Atur limit per kategori. Pemakaian dihitung dari transaksi pengeluaran bulan ini.</p><div class="form-grid"><div><label for="budgetcategory">Kategori transaksi</label><select id="budgetcategory"><option value="Makanan & minuman">Makanan & minuman</option><option value="Transportasi">Transportasi</option><option value="Belanja">Belanja</option><option value="Tagihan">Tagihan</option><option value="Hiburan & game">Hiburan & game</option><option value="Kesehatan">Kesehatan</option><option value="Lainnya">Lainnya</option></select></div><div><label for="budgetlimit">Batas per bulan (Rp)</label><input id="budgetlimit" type="number" min="1" step="1000" placeholder="Contoh: 500000"></div></div><button id="savebudget" style="margin-top:12px">Simpan batas</button><div id="budgetmsg" class="muted" style="margin-top:8px"></div><div id="budgetalerts" style="margin-top:12px"></div><div class="card" style="margin-top:14px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><strong>Riwayat notifikasi</strong><button class="ghost" id="clearbudgethistory" type="button">Hapus riwayat</button></div><div id="budgethistory" style="margin-top:10px"></div></div><div id="budgetlist" style="margin-top:12px"></div></div>
 </section>
 <section id="settings" class="page hidden">
-<div class="card"><h3>Pengaturan akun</h3><p class="muted">Informasi akun yang sedang digunakan.</p><div class="notice" id="accountinfo">Memuat akun...</div><p class="muted">Pengaturan alokasi gaji bisa diubah langsung dari Dashboard. Data transaksi dan tabungan tersimpan melalui akun Supabase.</p><button class="ghost" id="settingslogout">Keluar dari akun</button></div>
+<div class="card"><h3>Pengaturan akun</h3><p class="muted">Informasi akun yang sedang digunakan.</p><div class="notice" id="accountinfo">Memuat akun...</div><p class="muted">Pengaturan alokasi gaji bisa diubah langsung dari Dashboard. Data transaksi dan tabungan tersimpan melalui akun Supabase.</p><div class="section"><h3>Backup & Restore</h3><p class="muted">Backup menyimpan salinan data akun ke file JSON. Restore menggabungkan data ke akun ini dan tidak menghapus data yang sudah ada.</p><button id="backupdata">Unduh backup JSON</button> <label class="ghost" style="display:inline-block;padding:10px 14px;border-radius:9px;cursor:pointer">Pilih file backup<input id="restorefile" type="file" accept=".json,application/json" style="display:none"></label><div id="backupmsg" class="muted" style="margin-top:8px"></div></div><div class="section"><h3>Laporan PDF</h3><div class="formgrid"><div><label>Bulan mulai</label><input id="reportfrom" type="month"></div><div><label>Bulan akhir</label><input id="reportto" type="month"></div></div><button id="exportpdf" style="margin-top:12px">Buat laporan PDF</button><div id="pdfmsg" class="muted"></div></div><button class="ghost" id="settingslogout">Keluar dari akun</button></div>
 </section>
 </main></div>
 
@@ -473,6 +473,44 @@ async function boot(session){
  await loadAll();
  booting=false;
 }
+
+el('backupdata').onclick=()=>{
+ const backup={app:'Niell Finance',version:1,created_at:new Date().toISOString(),data:{wallets,transactions,goals,investments,emergency,monthlyAllocations,metadata:{salary_allocation:user.user_metadata?.salary_allocation||null,category_budgets:categoryBudgets,budget_alert_history:budgetAlertHistory,budget_alert_states:budgetAlertStates,recurring_transactions:recurringTransactions}}};
+ const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='niell-finance-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ msg('backupmsg','Backup berhasil dibuat. Simpan file JSON di tempat aman.');
+};
+el('restorefile').onchange=async ev=>{
+ const file=ev.target.files?.[0];if(!file)return;
+ try{
+  const backup=JSON.parse(await file.text()),d=backup?.data;
+  if(backup.app!=='Niell Finance'||backup.version!==1||!d||!Array.isArray(d.wallets)||!Array.isArray(d.transactions)||!Array.isArray(d.goals)||!Array.isArray(d.investments)||!Array.isArray(d.monthlyAllocations))throw new Error('Format backup tidak valid.');
+  if(!await nfConfirm('Gabungkan data backup ke akun ini? Data yang sudah ada tidak dihapus.'))return;
+  const upsertRows=async(table,rows,conflict='id')=>{if(!rows.length)return;const payload=rows.map(x=>({...x,user_id:user.id}));const {error}=await db.from(table).upsert(payload,{onConflict:conflict});if(error)throw new Error(table+': '+error.message)};
+  await upsertRows('wallets',d.wallets);
+  await upsertRows('transactions',d.transactions);
+  await upsertRows('savings_goals',d.goals);
+  await upsertRows('investments',d.investments);
+  await upsertRows('monthly_savings_allocations',d.monthlyAllocations,'user_id,month_key');
+  if(d.emergency){const {error}=await db.from('emergency_fund').upsert({...d.emergency,user_id:user.id},{onConflict:'user_id'});if(error)throw new Error('Dana darurat: '+error.message)}
+  const m=d.metadata||{},metadata={...user.user_metadata};
+  for(const key of ['salary_allocation','category_budgets','budget_alert_history','budget_alert_states','recurring_transactions'])if(m[key]!==undefined)metadata[key]=m[key];
+  const {data,error}=await db.auth.updateUser({data:metadata});if(error)throw error;user=data.user||user;
+  await loadAll();msg('backupmsg','Restore selesai. Data backup sudah digabungkan.');
+ }catch(err){msg('backupmsg','Restore gagal: '+err.message)}finally{ev.target.value=''}
+};
+el('exportpdf').onclick=()=>{
+ const from=el('reportfrom').value,to=el('reportto').value;
+ if(!from||!to||from>to){msg('pdfmsg','Pilih rentang bulan yang valid.');return}
+ const rows=transactions.filter(t=>String(t.date||'').slice(0,7)>=from&&String(t.date||'').slice(0,7)<=to).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+ const inc=rows.filter(t=>t.type==='income').reduce((a,t)=>a+Number(t.amount||0),0),out=rows.filter(t=>t.type==='expense').reduce((a,t)=>a+Number(t.amount||0),0);
+ const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const body=rows.map(t=>'<tr><td>'+safe(t.date)+'</td><td>'+safe(t.name)+'</td><td>'+safe(t.category)+'</td><td>'+(t.type==='income'?'Pemasukan':'Pengeluaran')+'</td><td>'+money(t.amount)+'</td></tr>').join('');
+ const w=window.open('','_blank');if(!w){msg('pdfmsg','Pop-up diblokir. Izinkan pop-up untuk situs ini.');return}
+ w.document.write('<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Laporan Niell Finance</title><style>body{font:12px Arial;padding:28px;color:#182238}h1{margin-bottom:4px}.summary{display:flex;gap:12px;margin:20px 0}.box{border:1px solid #ccd3df;padding:12px;flex:1}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{text-align:left;padding:8px;border-bottom:1px solid #ddd}th{background:#eef2f8}</style></head><body><h1>Niell Finance</h1><p>Laporan '+safe(from)+' sampai '+safe(to)+'</p><div class="summary"><div class="box">Pemasukan<br><b>'+money(inc)+'</b></div><div class="box">Pengeluaran<br><b>'+money(out)+'</b></div><div class="box">Selisih<br><b>'+money(inc-out)+'</b></div></div><p>Jumlah transaksi: '+rows.length+'</p><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Kategori</th><th>Jenis</th><th>Nominal</th></tr></thead><tbody>'+body+'</tbody></table><script>window.onload=function(){window.print()}<\/script></body></html>');
+ w.document.close();msg('pdfmsg','Pilih Save as PDF pada dialog cetak.');
+};
+
 el('logout').onclick=async()=>{await db.auth.signOut();location.reload()};
 document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.page').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.page));el('pagetitle').textContent=b.textContent});
 el('date').value=new Date().toISOString().slice(0,10);
