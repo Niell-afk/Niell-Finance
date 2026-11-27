@@ -818,12 +818,16 @@ function renderCashflow(currentMonthTransactions){
 function renderDashboardTargets(){
  const host=el('dashtargets');if(!host)return;
  const rows=[];
+ const activeDebts=debtRecords.filter(x=>x.kind==='debt'&&Number(x.remaining)>0);
+ const debtTarget=activeDebts.reduce((sum,x)=>sum+Number(x.amount||0),0);
+ const debtPaid=activeDebts.reduce((sum,x)=>sum+Math.max(0,Number(x.amount||0)-Number(x.remaining||0)),0);
+ if(debtTarget>0)rows.push({icon:'💳',name:'Pelunasan Utang',current:debtPaid,target:debtTarget,color:'#ff7185'});
  const g=goals.find(x=>Number(x.target_amount)>0);
  if(g)rows.push({icon:'🐷',name:g.name||'Tabungan',current:Number(g.current_amount||0),target:Number(g.target_amount||0),color:'#4f91ff'});
  const iv=investments.reduce((a,x)=>a+Number(x.current_value||0),0),it=investments.reduce((a,x)=>a+Number(x.initial_amount||0),0);
  if(it>0||iv>0)rows.push({icon:'📈',name:'Investasi',current:iv,target:Math.max(it,iv),color:'#35c995'});
  if(emergency&&Number(emergency.target||0)>0)rows.push({icon:'🛡️',name:'Dana Darurat',current:Number(emergency.current||0),target:Number(emergency.target||0),color:'#8b5cf6'});
- host.innerHTML=rows.length?rows.slice(0,3).map(x=>{const pct=x.target>0?Math.min(100,x.current/x.target*100):0;return '<div class="dash-target-item"><div class="dash-target-icon">'+x.icon+'</div><div class="dash-target-info"><strong>'+esc(x.name)+'</strong><small>'+money(x.current)+' / '+money(x.target)+'</small><div class="dash-target-track"><i style="width:'+pct+'%;background:'+x.color+'"></i></div></div><span class="dash-target-pct">'+pct.toFixed(0)+'%</span></div>'}).join(''):'<div class="muted">Tambahkan target tabungan, investasi, atau dana darurat untuk melihat progress di sini.</div>';
+ host.innerHTML=rows.length?rows.map(x=>{const pct=x.target>0?Math.min(100,x.current/x.target*100):0;return '<div class="dash-target-item"><div class="dash-target-icon">'+x.icon+'</div><div class="dash-target-info"><strong>'+esc(x.name)+'</strong><small>'+money(x.current)+' / '+money(x.target)+'</small><div class="dash-target-track"><i style="width:'+pct+'%;background:'+x.color+'"></i></div></div><span class="dash-target-pct">'+pct.toFixed(0)+'%</span></div>'}).join(''):'<div class="muted">Tambahkan target tabungan, investasi, dana darurat, atau catatan utang untuk melihat progress di sini.</div>';
 }
 function renderDashboardGoal(){const g=goals.find(x=>Number(x.target_amount)>0);if(!g){el('dashboardgoal').innerHTML='Belum ada target. <button class="ghost" onclick="goPage(\'savings\')">Buat target</button>';return}const target=Number(g.target_amount),current=Number(g.current_amount||0),pct=Math.min(100,current/target*100);el('dashboardgoal').innerHTML='<strong>'+esc(g.name)+'</strong><div class="muted" style="margin-top:8px">'+money(current)+' / '+money(target)+'</div><div class="goal-progress"><span style="width:'+pct+'%"></span></div><div class="muted">'+pct.toFixed(1)+'% tercapai</div><button class="ghost" style="margin-top:12px" onclick="goPage(\'savings\')">Lihat semua target</button>'}
 function renderSpendingBreakdown(monthRows){
@@ -924,6 +928,7 @@ function renderDebts(){
  const filter=el('debt-filter').value,rows=debtRecords.filter(x=>filter==='all'||filter===x.kind||(filter==='open'&&Number(x.remaining)>0)||(filter==='paid'&&Number(x.remaining)<=0)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
  el('debt-list').innerHTML=rows.length?rows.map(x=>{const paid=Number(x.remaining)<=0,kind=x.kind==='debt'?'Utang saya':'Piutang saya',overdue=!paid&&x.due&&x.due<new Date().toISOString().slice(0,10);return '<div class="card" style="margin:10px 0"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><strong>'+esc(x.title||kind)+'</strong><div class="muted">'+kind+' · '+esc(x.person||'-')+'</div></div><span class="pill">'+(paid?'Lunas / tertagih':overdue?'Lewat jatuh tempo':'Belum selesai')+'</span></div><div class="grid" style="margin-top:10px"><div><span class="muted">Nominal awal</span><strong>'+money(x.amount)+'</strong></div><div><span class="muted">Sisa</span><strong class="'+(x.kind==='debt'?'neg':'pos')+'">'+money(x.remaining)+'</strong></div><div><span class="muted">Jatuh tempo</span><strong>'+(esc(x.due||'Belum ditentukan'))+'</strong></div></div><div class="muted" style="margin-top:8px">Tanggal catatan: '+esc(x.date||'-')+' · Riwayat pembayaran: '+(x.payments||[]).length+'</div>'+(paid?'':'<p><button onclick="payDebtRecord(\''+x.id+'\')">Catat pembayaran</button></p>')+'<button class="ghost" onclick="viewDebtPayments(\''+x.id+'\')">Riwayat</button> <button class="ghost" onclick="editDebtRecord(\''+x.id+'\')">Ubah</button> <button class="ghost" onclick="removeDebtRecord(\''+x.id+'\')">Hapus</button></div>'}).join(''):'Belum ada catatan untuk filter ini.';
 }
+ renderDashboardTargets();
 async function saveDebtRecords(message){
  const {data,error}=await db.auth.updateUser({data:{debt_records:debtRecords}});
  if(error){msg('debt-msg','Gagal menyimpan: '+error.message);return false}
