@@ -577,7 +577,7 @@ el('authsubmit').onclick=async()=>{
 async function loadAll(){
  const [w,t,g,i,e,ma]=await Promise.all([
  db.from('wallets').select('*').order('created_at'),
- db.from('transactions').select('*').order('date',{ascending:false}),
+ db.from('transactions').select('*').order('date',{ascending:false}).order('created_at',{ascending:false}),
  db.from('savings_goals').select('*').order('created_at',{ascending:false}),
  db.from('investments').select('*').order('created_at',{ascending:false}),
  db.from('emergency_fund').select('*').eq('user_id',user.id).maybeSingle(),
