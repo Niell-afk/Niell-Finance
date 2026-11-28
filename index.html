@@ -337,6 +337,17 @@ body > #dialogbackdrop .dialog-box{
 @media(max-width:680px){.daily-wisdom{margin-top:10px;padding:12px 13px}.daily-wisdom blockquote{font-size:12px}.wisdom-source{font-size:9px}}
 
 #emsummary .card{min-width:0}#emsummary .metric{overflow-wrap:anywhere}#emview .goal-progress{margin:10px 0 14px}#emview p{margin:8px 0;color:#c5d3e9}@media(max-width:680px){#emsummary{grid-template-columns:1fr}}
+ 
+/* Finance health overview + responsive dashboard polish */
+.finance-health-card{background:linear-gradient(135deg,rgba(17,34,59,.98),rgba(12,24,43,.98));border:1px solid rgba(75,151,255,.48);box-shadow:0 10px 30px rgba(0,0,0,.16),inset 0 1px 0 rgba(160,211,255,.06)}
+.finance-health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+.finance-health-item{min-width:0;padding:15px;border:1px solid rgba(79,140,255,.2);border-radius:13px;background:rgba(7,17,32,.48)}
+.finance-health-item span,.finance-health-item small{display:block;color:var(--muted);font-size:12px}
+.finance-health-item strong{display:block;margin:8px 0 5px;font-size:clamp(17px,2vw,23px);overflow-wrap:anywhere}
+.finance-health-item small{line-height:1.45}
+.finance-health-insight{margin-top:13px;padding:12px 14px;border-radius:11px;background:rgba(55,125,220,.1);border:1px solid rgba(79,140,255,.22);color:#c8dcfa;font-size:13px;line-height:1.55}
+@media(max-width:900px){.finance-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.finance-health-grid{grid-template-columns:1fr 1fr;gap:8px}.finance-health-item{padding:11px}.finance-health-item span,.finance-health-item small{font-size:11px}.finance-health-item strong{font-size:17px}.finance-health-card .dash-card-head{align-items:flex-start;gap:8px}.dash-lower-grid{grid-template-columns:1fr}.dash-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -382,6 +393,16 @@ body > #dialogbackdrop .dialog-box{
  <div class="dash-right-stack"><div class="card dash-spending-card"><div class="dash-card-head"><h3>Ringkasan Pengeluaran</h3></div><div id="spendingbreakdown" class="muted">Belum ada pengeluaran bulan ini.</div></div><div class="dash-quick-actions">
  <button onclick="goPage('transactions')"><b>＋</b><span>Tambah<br>Transaksi</span></button><button onclick="goPage('savings')"><b>⚑</b><span>Atur Target</span></button><button onclick="goPage('statistics')"><b>▥</b><span>Lihat Laporan</span></button><button onclick="goPage('settings')"><b>⚙</b><span>Pengaturan</span></button>
  </div></div>
+</div>
+<div class="section card finance-health-card">
+ <div class="dash-card-head"><div><h3>◈ &nbsp;Kondisi Keuangan</h3><p class="muted" style="margin:5px 0 0">Ringkasan berdasarkan transaksi dan data yang tercatat.</p></div><button class="text-link" onclick="goPage('statistics')">Lihat statistik →</button></div>
+ <div class="finance-health-grid">
+  <div class="finance-health-item"><span>Arus kas bulan ini</span><strong id="healthcashflow">Rp0</strong><small id="healthcashflowhint">Pemasukan dikurangi pengeluaran</small></div>
+  <div class="finance-health-item"><span>Rasio pengeluaran</span><strong id="healthexpense">0%</strong><small id="healthexpensehint">Dari total pemasukan</small></div>
+  <div class="finance-health-item"><span>Dana darurat</span><strong id="healthemergency">Belum diatur</strong><small id="healthemergencyhint">Perkiraan cakupan pengeluaran</small></div>
+  <div class="finance-health-item"><span>Sisa utang</span><strong id="healthdebt">Rp0</strong><small id="healthdebthint">Total utang yang belum lunas</small></div>
+ </div>
+ <div id="healthinsight" class="finance-health-insight">Catat transaksi untuk melihat ringkasan kondisi keuangan.</div>
 </div>
 <div class="section card dash-allocation"><div class="top" style="margin-bottom:12px"><div><h3 style="margin:0">Alokasi Gaji</h3><div class="muted">Atur pembagian pemasukan bulanan lu</div></div><span class="pill" id="allocmodebadge">Nominal tetap</span></div><div class="alloc-layout"><div class="alloc-chart-wrap"><div class="alloc-chart" id="salarychart"><div class="alloc-chart-center"><div class="muted" style="font-size:12px">Total gaji</div><strong id="salarycenter">Rp1.500.000</strong></div></div></div><div><div class="alloc-legend" id="salarylegend"></div><div class="alloc-foot"><strong>Total dialokasikan <span id="salaryallocated">Rp1.500.000</span></strong><strong id="salaryremaining" class="pos">Sisa Rp0</strong></div></div></div><div class="section" style="border-top:1px solid var(--line);padding-top:14px"><div class="alloc-controls"><div><label>Total gaji per bulan (Rp)</label><input id="salarytotal" type="number" min="0" step="1000"></div><div><label>Mode alokasi</label><select id="salarymode"><option value="fixed">Nominal tetap</option><option value="percentage">Persentase tetap</option></select></div></div><div id="salaryinputs" class="alloc-controls" style="margin-top:8px"></div><p style="margin-bottom:0"><button id="savesalary">Simpan alokasi gaji</button> <span id="salarymsg" class="muted"></span></p></div></div>
 </section>
@@ -632,7 +653,7 @@ function render(){
  el('recent').innerHTML=transactions.slice(0,5).map(t=>{const income=t.type==='income',icon=income?'↗':(/makan|minum/i.test(t.category||t.name)?'♨':/game|top up/i.test(t.category||t.name)?'🎮':/invest/i.test(t.category||t.name)?'▥':'•');return '<div class="dash-recent-row"><div class="dash-recent-icon">'+icon+'</div><div><div class="dash-recent-name">'+esc(t.name||'Transaksi')+'</div><div class="dash-recent-sub">'+esc(t.category||'Lainnya')+' · '+esc(t.date||'')+'</div></div><div class="dash-recent-amount '+(income?'pos':'neg')+'">'+(income?'+':'−')+money(t.amount)+'</div></div>'}).join('')||'<div class="muted">Belum ada transaksi.</div>';
  el('dashboardmonth').textContent=new Intl.DateTimeFormat('id-ID',{month:'short',year:'numeric'}).format(new Date());
  const uname=user?.user_metadata?.username||user?.email?.split('@')[0]||'Niel';el('dashboardusername').textContent=user?.user_metadata?.display_name||uname;
- renderDashboardTargets();
+ renderDashboardTargets();renderFinancialHealth();
  renderGoals();renderInvestments();renderEmergency();renderMonthlyAllocation();renderSalaryAllocation();renderCashflow(mt);renderSpendingBreakdown(mt);renderStatistics();renderSettings();
 }
 
@@ -814,6 +835,40 @@ function renderCashflow(currentMonthTransactions){
   node.addEventListener('blur',()=>{tip.style.display='none'});
   node.addEventListener('click',()=>show(index));
  });
+}
+function renderFinancialHealth(){
+ const current=new Date(),month=current.getMonth(),year=current.getFullYear();
+ const monthItems=transactions.filter(t=>{const d=new Date(String(t.date||'')+'T00:00:00');return d.getMonth()===month&&d.getFullYear()===year});
+ const income=monthItems.filter(t=>t.type==='income').reduce((a,t)=>a+Number(t.amount||0),0);
+ const expense=monthItems.filter(t=>t.type==='expense').reduce((a,t)=>a+Number(t.amount||0),0);
+ const cashflow=income-expense,ratio=income>0?expense/income*100:null;
+ const debt=debtRecords.filter(x=>x.kind==='debt').reduce((a,x)=>a+Math.max(0,Number(x.remaining)||0),0);
+ const monthlyExpense=[];
+ for(let offset=0;offset<3;offset++){
+  const d=new Date(year,month-offset,1),key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  const total=transactions.filter(t=>t.type==='expense'&&String(t.date||'').slice(0,7)===key).reduce((a,t)=>a+Number(t.amount||0),0);
+  if(total>0)monthlyExpense.push(total);
+ }
+ const avgExpense=monthlyExpense.length?monthlyExpense.reduce((a,b)=>a+b,0)/monthlyExpense.length:0;
+ const emergencyBalance=Number(emergency?.current||0),coverage=avgExpense>0?emergencyBalance/avgExpense:null;
+ const cashEl=el('healthcashflow'),ratioEl=el('healthexpense'),emEl=el('healthemergency'),debtEl=el('healthdebt');
+ if(!cashEl)return;
+ cashEl.textContent=(cashflow<0?'−':'')+money(Math.abs(cashflow));cashEl.className=cashflow<0?'neg':'pos';
+ el('healthcashflowhint').textContent=money(income)+' masuk · '+money(expense)+' keluar';
+ ratioEl.textContent=ratio===null?'Belum ada pemasukan':ratio.toFixed(1)+'%';
+ el('healthexpensehint').textContent=ratio===null?'Catat pemasukan untuk menghitung rasio':ratio<=100?'Dari total pemasukan bulan ini':'Pengeluaran melebihi pemasukan';
+ emEl.textContent=coverage===null?'Belum cukup data':coverage.toFixed(1)+' bulan';
+ el('healthemergencyhint').textContent=coverage===null?'Butuh data pengeluaran bulanan':'Saldo '+money(emergencyBalance)+' dibanding rata-rata pengeluaran';
+ debtEl.textContent=money(debt);
+ el('healthdebthint').textContent=debtRecords.filter(x=>x.kind==='debt'&&Number(x.remaining)>0).length+' catatan utang aktif';
+ const notes=[];
+ if(income===0&&expense===0)notes.push('Belum ada transaksi bulan ini. Mulai catat pemasukan dan pengeluaran agar ringkasan makin berguna.');
+ else if(cashflow<0)notes.push('Pengeluaran bulan ini lebih besar daripada pemasukan sebesar '+money(Math.abs(cashflow))+'.');
+ else notes.push('Arus kas bulan ini positif sebesar '+money(cashflow)+'.');
+ if(ratio!==null&&ratio>80)notes.push('Pengeluaran sudah memakai lebih dari 80% pemasukan bulan ini.');
+ if(coverage!==null&&coverage<1)notes.push('Dana darurat saat ini kurang dari rata-rata pengeluaran satu bulan.');
+ if(debt>0)notes.push('Masih ada utang tercatat sebesar '+money(debt)+'.');
+ el('healthinsight').textContent=notes.join(' ');
 }
 function renderDashboardTargets(){
  const host=el('dashtargets');if(!host)return;
