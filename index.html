@@ -615,14 +615,17 @@ async function loadAll(){
   if(transferResult.error)msg('transfermsg','Aktifkan fitur transfer dulu dengan menjalankan SQL migration di folder supabase/migrations pada GitHub.');
   if(futureActivityResult.error)msg('futureusemsg','Aktifkan riwayat penggunaan dengan menjalankan SQL migration future savings di Supabase.');
 }
+function transactionWalletId(t){return t.source_wallet_id||t.wallet_id||t.destination_wallet_id||''}
+function transactionWalletName(t){const id=transactionWalletId(t),wallet=wallets.find(w=>String(w.id)===String(id));return wallet?.name||t.wallet_name||t.wallet||'Dompet dihapus'}
+function transactionMatchesWallet(t,id){const wallet=wallets.find(w=>String(w.id)===String(id));return [t.source_wallet_id,t.wallet_id,t.destination_wallet_id].some(v=>String(v||'')===String(id))||(wallet&&[t.wallet_name,t.wallet].some(v=>String(v||'')===String(wallet.name)))}
 function exportTransactions(){
  const q=(el('txsearch')?.value||'').trim().toLowerCase(),kind=el('txfiltertype')?.value||'all',filterMonth=el('txfiltermonth')?.value||'',filterWallet=el('txfilterwallet')?.value||'all',sort=el('txsort')?.value||'newest';
- const rows=transactions.filter(t=>(kind==='all'||t.type===kind)&&(filterWallet==='all'||t.source_wallet_id===filterWallet)&&(!filterMonth||(t.date||'').startsWith(filterMonth))&&(!q||[t.name,t.category,t.date].some(v=>String(v||'').toLowerCase().includes(q))));
+ const rows=transactions.filter(t=>(kind==='all'||t.type===kind)&&(filterWallet==='all'||transactionMatchesWallet(t,filterWallet))&&(!filterMonth||(t.date||'').startsWith(filterMonth))&&(!q||[t.name,t.category,t.date].some(v=>String(v||'').toLowerCase().includes(q))));
  rows.sort((a,b)=>sort==='oldest'?(a.date||'').localeCompare(b.date||''):sort==='highest'?Number(b.amount||0)-Number(a.amount||0):sort==='lowest'?Number(a.amount||0)-Number(b.amount||0):(b.date||'').localeCompare(a.date||''));
  if(!rows.length){msg('txmsg','Tidak ada transaksi untuk diekspor.');return}
  const safe=value=>{let v=String(value??'');if(['=','+','-','@','\\t','\\r'].some(c=>v.startsWith(c)))v="'"+v;return '"'+v.replace(/"/g,'""')+'"'};
  const lines=[['Tanggal','Nama transaksi','Kategori','Jenis','Nominal (Rp)','Dompet'].map(safe).join(',')];
- rows.forEach(t=>{const wallet=wallets.find(w=>w.id===t.source_wallet_id);lines.push([t.date,t.name,t.category,t.type==='income'?'Pemasukan':'Pengeluaran',Number(t.amount||0),wallet?.name||''].map(safe).join(','))});
+ rows.forEach(t=>{const wallet=wallets.find(w=>String(w.id)===String(transactionWalletId(t)));lines.push([t.date,t.name,t.category,t.type==='income'?'Pemasukan':'Pengeluaran',Number(t.amount||0),wallet?.name||''].map(safe).join(','))});
  const blob=new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='niell-finance-transaksi-'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
  msg('txmsg',rows.length+' transaksi berhasil diekspor.');
@@ -645,7 +648,7 @@ function render(){
  const txIncome=filtered.filter(t=>t.type==='income').reduce((sum,t)=>sum+Number(t.amount||0),0),txExpense=filtered.filter(t=>t.type==='expense').reduce((sum,t)=>sum+Number(t.amount||0),0),txNet=txIncome-txExpense;
  el('txcount').textContent=filtered.length+' dari '+transactions.length+' transaksi';
  el('txtotals').innerHTML='<div class="tx-total"><span>Total pemasukan</span><strong class="pos">'+money(txIncome)+'</strong></div><div class="tx-total"><span>Total pengeluaran</span><strong class="neg">'+money(txExpense)+'</strong></div><div class="tx-total"><span>Selisih</span><strong class="'+(txNet>=0?'pos':'neg')+'">'+(txNet>0?'+':'')+money(txNet)+'</strong></div>';
- el('txlist').innerHTML=filtered.length?`<table class="table"><thead><tr><th>Tanggal</th><th>Nama</th><th>Dompet</th><th>Jenis</th><th>Nominal</th><th>Aksi</th></tr></thead><tbody>${filtered.map(t=>`<tr><td>${esc(t.date||'')}</td><td>${esc(t.name||'')}<div class="muted" style="font-size:11px">${esc(t.category||'')}</div></td><td>${esc(wallets.find(w=>w.id===t.source_wallet_id)?.name||'Dompet dihapus')}</td><td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td><td class="${t.type==='income'?'pos':'neg'}">${money(t.amount)}</td><td><button onclick="editTransaction('${t.id}')">Ubah</button> <button class="ghost" onclick="deleteTransaction('${t.id}')">Hapus</button></td></tr>`).join('')}</tbody></table>`:(transactions.length?'Tidak ada transaksi yang cocok dengan filter.':'Belum ada transaksi.');
+ el('txlist').innerHTML=filtered.length?`<table class="table"><thead><tr><th>Tanggal</th><th>Nama</th><th>Dompet</th><th>Jenis</th><th>Nominal</th><th>Aksi</th></tr></thead><tbody>${filtered.map(t=>`<tr><td>${esc(t.date||'')}</td><td>${esc(t.name||'')}<div class="muted" style="font-size:11px">${esc(t.category||'')}</div></td><td>${esc(transactionWalletName(t)||'Dompet dihapus')}</td><td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td><td class="${t.type==='income'?'pos':'neg'}">${money(t.amount)}</td><td><button onclick="editTransaction('${t.id}')">Ubah</button> <button class="ghost" onclick="deleteTransaction('${t.id}')">Hapus</button></td></tr>`).join('')}</tbody></table>`:(transactions.length?'Tidak ada transaksi yang cocok dengan filter.':'Belum ada transaksi.');
  const total=wallets.reduce((s,w)=>s+Number(w.balance||0),0);el('total').textContent=money(total);
  const now=new Date(), month=now.getMonth(),year=now.getFullYear();
  const mt=transactions.filter(t=>{const d=new Date(t.date+'T00:00:00');return d.getMonth()===month&&d.getFullYear()===year});
