@@ -1040,9 +1040,9 @@ el('savetransfer').onclick=async()=>{
  finally{btn.disabled=false}
 };
 el('addwallet').onclick=async()=>{const name=el('walletname').value.trim(),balance=Number(el('walletbalance').value||0);if(!name||balance<0)return;const {error}=await db.from('wallets').insert({user_id:user.id,name,balance});if(error){nfAlert(error.message);return}el('walletname').value='';el('walletbalance').value='0';await loadAll()};
-['txsearch','txfiltertype','txfiltermonth','txsort'].forEach(id=>el(id).addEventListener('input',()=>render()));
+['txsearch','txfiltertype','txfilterwallet','txfiltermonth','txsort'].forEach(id=>el(id).addEventListener('input',()=>render()));
 el('exporttx').onclick=exportTransactions;
-el('txreset').onclick=()=>{el('txsearch').value='';el('txfiltertype').value='all';el('txfiltermonth').value='';el('txsort').value='newest';render()};
+el('txreset').onclick=()=>{el('txsearch').value='';el('txfiltertype').value='all';el('txfilterwallet').value='all';el('txfiltermonth').value='';el('txsort').value='newest';render()};
 el('addtx').onclick=async()=>{
  const type=el('type').value,wallet_id=el('wallet').value,name=el('name').value.trim(),amount=Number(el('amount').value),category=el('category').value,transaction_date=el('date').value;
  if(!wallet_id||!name||!Number.isFinite(amount)||amount<=0||!transaction_date){msg('txmsg','Lengkapi semua kolom dengan benar.');return}
